@@ -12,7 +12,7 @@
 	{mod, {clamorous_app, []}},
 	{env, [ 
 		{port, 8080}, 
-		{cleanup_interval, 10}, 
+		{cleanup_interval, 1}, 
 		{history_storage_time, {1,0,0}}, 
 		{match_fields, []} 
 	]}
