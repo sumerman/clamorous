@@ -36,7 +36,7 @@ handle(Req, State) ->
 
 handle_hist(_Req, #state{seq=new} = State) -> State;
 handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
-	Items = cl_logger:select(N, MF),
+	{ok, Items} = cl_logger:select(N, MF),
 	[send_resp(Req, I) || I <- Items],
 	State.
 
