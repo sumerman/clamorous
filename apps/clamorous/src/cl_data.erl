@@ -7,11 +7,11 @@
 
 -record(data, {id, timestamp, match_fields, content}).
 -export([id/1, set_id/2, timestamp/1, match_fields/1, content/1, 
-	keypos/0, topic/0, new/3, new_from_content/1]).
+	keypos/0, topic/0, new/2, new_from_content/1]).
 
-new(ID, MF, C) ->
+new(MF, C) ->
 	#data{ 
-		id=ID,
+		id=cl_idgen:get_id(),
 		timestamp=gen_timestamp(),
 		match_fields=MF,
 		content=C
@@ -36,7 +36,7 @@ new_from_content(D) ->
 		MFL when is_list(MFL) ->
 			[E || {F,_V}=E <- PL, lists:member(F, MFL)]
 	end,
-	new(erlang:now(), MFV, D).
+	new(MFV, D).
 
 gen_timestamp() ->
 	calendar:datetime_to_gregorian_seconds(calendar:universal_time()).

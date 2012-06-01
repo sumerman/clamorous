@@ -14,7 +14,8 @@
 start(_StartType, _StartArgs) ->
 	Disp = [
 		{'_', [
-				{[<<"clamorous">>, <<"publish">>], cl_send, []}
+				{[<<"clamorous">>, <<"publish">>], cl_send, []},
+				{[<<"clamorous">>, <<"subscribe">>, <<"stream">>], cl_stream, []}
 				%{[<<"combiners">>, <<"list">>], is_combiners_list, []}
 				%{[<<"combiners">>, <<"info">>, comb_name], is_combiner_info, []},
 		]}
