@@ -14,7 +14,7 @@
 start(_StartType, _StartArgs) ->
 	Disp = [
 		{'_', [
-				{[<<"clamorous">>, <<"send">>], cl_send, []}
+				{[<<"clamorous">>, <<"publish">>], cl_send, []}
 				%{[<<"combiners">>, <<"list">>], is_combiners_list, []}
 				%{[<<"combiners">>, <<"info">>, comb_name], is_combiner_info, []},
 		]}
@@ -22,7 +22,7 @@ start(_StartType, _StartArgs) ->
 	Port = clamorous:get_conf(port),
 	cowboy:start_listener(introspec_http, ?ACCEPTORS_COUT,
 		cowboy_tcp_transport, [{port, Port}],
-		cowboy_http_protocol, [{dispatch, Disp}]
+		cowboy_http_protocol, [{dispatch, Disp}, {timeout, infinity}]
 	),
     clamorous_sup:start_link().
 

@@ -22,6 +22,7 @@
 	handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {next_id=0}).
+-record(idx, {t,k,v}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -32,8 +33,10 @@ start_link() ->
 
 select(MFs) -> select(0, MFs).
 select(LastID, MFs) when is_list(MFs) ->
-	IDs = lists:flatten([sel_id_by_mf(LastID, MF) || MF <- MFs]),
-	lists:flatten([lookup(ID) || ID <- lists:usort(IDs)]);
+	Newer = gb_sets:from_list(sel_id_newer_than(LastID)),
+	SList = [gb_sets:from_list(sel_id_by_mf(LastID, MF)) || MF <- MFs],
+	IDs   = gb_sets:to_list(gb_sets:intersection([Newer|SList])),
+	lists:concat([lookup(ID) || ID <- IDs]);
 select(LastID, MF) when is_tuple(MF) ->
 	select(LastID, [MF]).
 
@@ -46,6 +49,7 @@ init(_Args) ->
 			duplicate_bag,
 			protected,
 			named_table, 
+			{keypos, #idx.k},
 			{read_concurrency, true}]),
 	harbinger:subscribe(cl_data:topic()),
 	set_timer(),
@@ -80,12 +84,14 @@ code_change(_OldVsn, State, _Extra) ->
 insert_object(ID, D) ->
 	O  = cl_data:set_id(D, ID),
 	MF = cl_data:match_fields(O),
-	insert({cl_data:id(O), O}), 
-	insert({{time, cl_data:timestamp(O)}, cl_data:id(O)}), 
-	[insert({KV, cl_data:id(O)}) || KV <- MF].
+	Cont =  #idx{t=cont, k=cl_data:id(O), v=cl_data:content(O)}, 
+	Time =  #idx{t=time, k=cl_data:timestamp(O), v=cl_data:id(O)}, 
+	Prop = [#idx{t=prop, k=KV, v=cl_data:id(O)} || KV <- MF],
+	LRes = [Cont|[Time|Prop]],
+	insert(LRes).
 
 delete_id(ID) ->
-	ets:match_delete(?MODULE, {'_', ID}),
+	ets:match_delete(?MODULE, #idx{v=ID, _='_'}),
 	ets:delete(?MODULE, ID).
 
 insert(L) ->
@@ -95,11 +101,16 @@ incr_id(#state{ next_id=NID } = State) ->
 	State#state{ next_id=NID+1 }.
 
 sel_id_by_mf(LastID, {_K,_V}=MF) ->
-	Expr = [{{MF,'$1'},[{'>','$1',LastID}],['$1']}],
+	Expr = [{#idx{t=prop,k=MF,v='$1', _='_'},[{'>','$1',LastID}],['$1']}],
+	ets:select(?MODULE, Expr).
+
+sel_id_newer_than(ID) ->
+	Expr = [{#idx{t=cont,k='$1', _='_'},[{'>','$1',ID}],['$1']}],
 	ets:select(?MODULE, Expr).
 
 lookup(Key) ->
-	[V || {K,V} <- ets:lookup(?MODULE, Key), K == Key].
+	try ets:lookup_element(?MODULE, Key, #idx.v)
+	catch _:_ -> [] end.
 
 set_timer() ->
 	M = clamorous:get_conf(cleanup_interval),
@@ -110,7 +121,7 @@ cleanup() ->
 	Sec = (timer:hms(H, M, S) div timer:seconds(1)),
 	Now = cl_data:timestamp(cl_data:new(0,[],[])),
 	Old = Now - Sec,
-	Exp = [{{{time,'$1'},'$2'},[{'=<','$1',Old}],['$2']}],
+	Exp = [{#idx{t=time,k='$1',v='$2', _='_'},[{'=<','$1',Old}],['$2']}],
 	IDs = ets:select(?MODULE, Exp),
 	[delete_id(ID) || ID <- IDs].
 
