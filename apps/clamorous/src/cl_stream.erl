@@ -9,6 +9,7 @@
 -export([init/3, handle/2, terminate/2]).
 
 -include_lib("harbinger/include/harbinger.hrl").
+-record(state, {seq=0,mfs=[]}).
 
 gen_filter(MFF) ->
 	fun(_C, M) ->
@@ -20,26 +21,32 @@ gen_filter(MFF) ->
 	end.	
 
 init({_Any, http}, Req, []) ->
-	{QS, Req1} = cowboy_http_req:qs_vals(Req),
+	{QS, Req1}  = cowboy_http_req:qs_vals(Req),
+	{Bin, Req2} = cowboy_http_req:binding(seq, Req1),
 	harbinger:subscribe(cl_data:topic(), gen_filter(QS)),
-	{ok, Req1, QS}.
+	Seq = try list_to_integer(binary_to_list(Bin))
+	catch _:_ -> new end,
+	{ok, Req2, #state{seq=Seq, mfs=QS}}.
 
 handle(Req, State) ->
 	Headers    = [{'Content-Type', <<"text/event-stream">>}],
 	{ok, Req2} = cowboy_http_req:chunked_reply(200, Headers, Req),
-	Items      = cl_logger:select(0, State),
-	[send_resp(Req2, I) || I <- Items],
+	handle_hist(Req2, State),
 	handle_loop(Req2, State).
 
+handle_hist(_Req, #state{seq=new} = State) -> State;
+handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
+	Items = cl_logger:select(N, MF),
+	[send_resp(Req, I) || I <- Items],
+	State.
+
 handle_loop(Req, State) ->
-	%{ok, Transport, Socket} = cowboy_http_req:transport(Req),
 	receive
 		?NOTIFICATION(_C, M) ->
 			send_resp(Req, {
 					cl_data:id(M), 
 					cl_data:content(M)}),
-			%Transport:send(Socket, Data),
-			handle_loop(Req, State)
+			?MODULE:handle_loop(Req, State)
 	end.
 
 terminate(_Req, _State) ->
@@ -50,5 +57,5 @@ send_resp(Req, {ID, Cont}) ->
 						{id,ID}, 
 						{data,{json, Cont}}
 						]), $\n],
-	ok = cowboy_http_req:chunk(Data, Req).
+	cowboy_http_req:chunk(Data, Req).
 
