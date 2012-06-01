@@ -6,7 +6,7 @@
 -module(cl_stream).
 
 -behaviour(cowboy_http_handler).
--export([init/3, handle/2, terminate/2]).
+-export([init/3, handle/2, terminate/2, handle_loop/2]).
 
 -include_lib("harbinger/include/harbinger.hrl").
 -record(state, {seq=0,mfs=[]}).

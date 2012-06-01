@@ -11,12 +11,16 @@
 %% Application callbacks
 %% ===================================================================
 
+to_path(L) ->
+	[atom_to_binary(I,latin1) || I <- L].
+
 start(_StartType, _StartArgs) ->
+	{ok, App} = application:get_application(),
 	Disp = [
 		{'_', [
-				{[<<"clamorous">>, <<"publish">>], cl_send, []},
-				{[<<"clamorous">>, <<"subscribe">>, <<"stream">>], cl_stream, []},
-				{[<<"clamorous">>, <<"subscribe">>, <<"stream">>, seq], cl_stream, []}
+				{to_path([App, publish]),                    cl_send,   []},
+				{to_path([App, subscribe, stream]),          cl_stream, []},
+				{to_path([App, subscribe, stream]) ++ [seq], cl_stream, []}
 		]}
 	],
 	Port = clamorous:get_conf(port),
