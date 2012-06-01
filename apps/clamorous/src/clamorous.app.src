@@ -1,14 +1,19 @@
-{application, clamorous,
- [
-  {description, ""},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib,
-                  harbinger,
-                  cowboy
-                 ]},
-  {mod, { clamorous_app, []}},
-  {env, []}
- ]}.
+%% vim:ft=erlang:
+{application, clamorous,[
+	{description, "Simple HTTP notification broker"},
+	{vsn, "0.1"},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib,
+		harbinger,
+		cowboy
+	]},
+	{mod, {clamorous_app, []}},
+	{env, [ 
+		{port, 8080}, 
+		{cleanup_interval, 10}, 
+		{history_storage_time, {1,0,0}}, 
+		{match_fields, []} 
+	]}
+]}.

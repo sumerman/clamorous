@@ -5,8 +5,6 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
-%%TODO move to hrl
--define(PORT, 8080).
 -define(ACCEPTORS_COUT, 100).
 
 %% ===================================================================
@@ -21,8 +19,7 @@ start(_StartType, _StartArgs) ->
 				%{[<<"combiners">>, <<"info">>, comb_name], is_combiner_info, []},
 		]}
 	],
-	Env  = application:get_all_env(),
-	Port = proplists:get_value(port, Env, ?PORT),
+	Port = clamorous:get_conf(port),
 	cowboy:start_listener(introspec_http, ?ACCEPTORS_COUT,
 		cowboy_tcp_transport, [{port, Port}],
 		cowboy_http_protocol, [{dispatch, Disp}]
