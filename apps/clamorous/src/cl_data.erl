@@ -8,7 +8,7 @@
 -record(data, {id, timestamp, match_fields, content}).
 -export([id/1, set_id/2, timestamp/1, match_fields/1, content/1]). 
 -export([keypos/0, topic/0, new/2, new_from_content/1, encode/1]).
--export([gen_timestamp/0, gen_filter/1]).
+-export([gen_timestamp/0, gen_filter/1, parse_plist_to_mf/1]).
 
 new(MF, C) ->
 	#data{ 
@@ -59,7 +59,16 @@ gen_filter(MFF) ->
 		MFs = cl_data:match_fields(M),
 		lists:all(fun({K,V}) ->
 					V1 = proplists:get_value(K,MFs),
-					V1 =:= V
+					%io:fromat("~n~p;~p~n~n", [V,V1]),
+					V =:= V1
 			end, MFF)
-	end.	
+	end.
+
+parse_plist_to_mf(PL) ->
+	[{K,parse_val(V)} || {K,V} <- PL].
+
+parse_val(V) ->
+	try mochijson2:decode(V, [{format, proplist}])
+	catch _:_ -> V end.
+
 

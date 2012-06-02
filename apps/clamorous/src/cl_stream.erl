@@ -14,11 +14,15 @@
 init({_Any, http}, Req, []) ->
 	{QS, Req1}  = cowboy_http_req:qs_vals(Req),
 	{Seq, Req2} = clamorous_app:get_seq(Req1),
-	harbinger:subscribe(cl_data:topic(), cl_data:gen_filter(QS)),
-	{ok, Req2, #state{seq=Seq, mfs=QS}}.
+	MF = cl_data:parse_plist_to_mf(QS),
+	harbinger:subscribe(cl_data:topic(), cl_data:gen_filter(MF)),
+	{ok, Req2, #state{seq=Seq, mfs=MF}}.
 
 handle(Req, State) ->
-	Headers    = [{'Content-Type', <<"text/event-stream">>}],
+	Headers = [
+		{'Content-Type', <<"text/event-stream">>},
+		{<<"Access-Control-Allow-Origin">>, <<"*">>}
+	],
 	{ok, Req2} = cowboy_http_req:chunked_reply(200, Headers, Req),
 	handle_hist(Req2, State),
 	handle_loop(Req2, State).

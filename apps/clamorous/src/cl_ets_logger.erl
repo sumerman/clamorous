@@ -112,20 +112,20 @@ point_in_past() ->
 
 max_id_among_old_ones(#idx{t=time,k=Tm,v=ID}, {Old, MI}) when (Tm=<Old) ->
 	if 
-		ID > MI -> ID; 
-		true    -> MI 
+		ID > MI -> {Old, ID}; 
+		true    -> {Old, MI} 
 	end;
-max_id_among_old_ones(_, {_, MI}) -> MI.
+max_id_among_old_ones(_, A) -> A.
 
 cleanup(#state{ backend=B, tab=T, min_id=PMin } = St) ->
 	Old = point_in_past(),
 	% max id among old items becomes min id after deletion
-	Min = B:foldl(fun max_id_among_old_ones/2, {Old, PMin}, T),
+	{_O, Min} = B:foldl(fun max_id_among_old_ones/2, {Old, PMin}, T),
 	Exp = [
 		% meta
-		{#idx{v='$1', _='_'},[{'>','$1',Min}],[true]},
+		{#idx{v='$1', _='_'},[{'<','$1',Min}],[true]},
 		% content
-		{#idx{t=cont, k='$1', _='_'},[{'>','$1',Min}],[true]}
+		{#idx{t=cont, k='$1', _='_'},[{'<','$1',Min}],[true]}
 	],
 	B:select_delete(T, Exp),
 	St#state{ min_id=Min }.

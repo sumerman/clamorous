@@ -21,9 +21,11 @@ start(_StartType, _StartArgs) ->
 	{ok, App} = application:get_application(),
 	Disp = [
 		{'_', [
-				{to_path([App, publish]),                    cl_send,   []},
-				{to_path([App, subscribe, stream]),          cl_stream, []},
-				{to_path([App, subscribe, stream]) ++ [?SEQ], cl_stream, []}
+				{to_path([App, publish]),                     cl_send,   []},
+				{to_path([App, subscribe, stream]),           cl_stream, []},
+				{to_path([App, subscribe, stream]) ++ [?SEQ], cl_stream, []},
+				{to_path([App, subscribe, wait])   ++ [?SEQ], cl_lpoll,  []},
+				{to_path([App, subscribe, get])    ++ [?SEQ], cl_lpoll,  [{lpoll,false}]}
 		]}
 	],
 	Port = clamorous:get_conf(port),
