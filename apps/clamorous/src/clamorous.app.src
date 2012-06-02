@@ -1,7 +1,7 @@
 %% vim:ft=erlang:
 {application, clamorous,[
 	{description, "Simple HTTP notification broker"},
-	{vsn, "0.1"},
+	{vsn, "0.2"},
 	{registered, []},
 	{applications, [
 		kernel,

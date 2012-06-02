@@ -7,8 +7,6 @@ DIRS=src
 #all: compile eunit doc
 all: compile 
 
-check: compile dialyzer
-
 deps:
 	$(REBAR) get-deps
 
@@ -18,6 +16,10 @@ compile: deps
 clean:
 	$(REBAR) clean
 	-rm log/*
+
+rel: compile
+	-rm -r rel/clamorous
+	$(REBAR) generate
 
 cleandeps:
 	$(REBAR) delete-deps
@@ -29,9 +31,6 @@ test: eunit
 
 doc:
 	$(REBAR) doc
-
-dialyzer: compile
-	$(REBAR) skip_deps=true dialyze
 
 tags:
 	erl -s tags subdir "./" -s init stop -noshell
