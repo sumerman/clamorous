@@ -29,7 +29,7 @@ select(LastID, MFs) ->
 reg_as_logger() ->
 	pg2:create(group()),
 	pg2:join(group(), self()),
-	harbinger:subscribe(cl_data:topic()).
+	cl_data:subscribe().
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions

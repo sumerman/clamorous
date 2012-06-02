@@ -31,17 +31,31 @@ post_is_create(Req, State) ->
 
 malformed_request(Req, State) ->
 	{ok, B, Req1} = cowboy_http_req:body(Req),
-	try cl_data:new_from_content(B) of
-		M ->
-			{false, Req1, M}
-	catch
-		error:E -> 
-			{true, resp(Req1, error, E), State}
+	Hook = [{object_hook, fun(X)->
+				J = mochijson2:encode(X),
+				cl_data:new_from_json(J) 
+			end}],
+	% single obj?
+	try cl_data:new_from_json(B) of
+		M -> {false, Req1, {one, M}}
+	catch error:_ ->
+			% may be array of objects?
+			try mochijson2:decode(B, Hook) of
+				M -> {false, Req1, {many, M}}
+			catch error:E ->
+				% no, just crap
+				{true, resp(Req1, error, E), State}
+			end
 	end.
 
-process_post(Req, M) ->
-	harbinger:send(cl_data:topic(), M),
-	{true, resp(Req, ok), M}.
+process_post(Req, {many, L}) when is_list(L) ->
+	[cl_data:send(M) || M <- L], 
+	ok(Req);
+process_post(Req, {one, M}) ->
+	cl_data:send(M),
+	ok(Req).
+
+ok(Req) -> {true, resp(Req, ok), ok}.
 
 resp(Req1, St) -> resp(Req1, St, done).
 resp(Req1, St, Desc) ->

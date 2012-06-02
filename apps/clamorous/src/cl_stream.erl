@@ -8,14 +8,14 @@
 -behaviour(cowboy_http_handler).
 -export([init/3, handle/2, terminate/2, handle_loop/2]).
 
--include_lib("harbinger/include/harbinger.hrl").
+-include("../include/clamorous.hrl").
 -record(state, {seq=0,mfs=[]}).
 
 init({_Any, http}, Req, []) ->
 	{QS, Req1}  = cowboy_http_req:qs_vals(Req),
 	{Seq, Req2} = clamorous_app:get_seq(Req1),
 	MF = cl_data:parse_plist_to_mf(QS),
-	harbinger:subscribe(cl_data:topic(), cl_data:gen_filter(MF)),
+	cl_data:subscribe(cl_data:gen_filter(MF)),
 	{ok, Req2, #state{seq=Seq, mfs=MF}}.
 
 handle(Req, State) ->
@@ -35,7 +35,9 @@ handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
 
 handle_loop(Req, State) ->
 	receive
-		?NOTIFICATION(_C, M) ->
+		shutdown ->
+			{ok, Req, State};
+		?CLDATA(M) ->
 			send_resp(Req, M),
 			?MODULE:handle_loop(Req, State)
 	end.

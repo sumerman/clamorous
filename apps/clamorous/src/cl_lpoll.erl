@@ -6,7 +6,7 @@
 -module(cl_lpoll).
 -export([init/3, content_types_provided/2, to_json/2]).
 
--include_lib("harbinger/include/harbinger.hrl").
+-include("../include/clamorous.hrl").
 
 init(_Trasp, _Req, Opts) ->
 	% I need to pass option somewhow, so 
@@ -39,7 +39,7 @@ to_json(Req, PName) ->
 
 subscribe(false, _) -> false;
 subscribe(true, MF) ->
-	harbinger:subscribe(cl_data:topic(), cl_data:gen_filter(MF)).
+	cl_data:subscribe(cl_data:gen_filter(MF)).
 
 hist(new, _) -> [];
 hist(Seq, MF) when is_integer(Seq) ->
@@ -48,13 +48,13 @@ hist(Seq, MF) when is_integer(Seq) ->
 
 recv(false) -> 
 	receive 
-		?NOTIFICATION(_C, M) -> 
+		?CLDATA(M) -> 
 			[M|recv(false)]
 	after 0 -> []
 	end;
 recv(true) ->
 	receive 
-		?NOTIFICATION(_C, M) -> 
+		?CLDATA(M) -> 
 			[M|recv(false)]
 	end.
 

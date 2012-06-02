@@ -6,9 +6,14 @@
 -module(cl_data).
 
 -record(data, {id, timestamp, match_fields, content}).
+%% Data fields
 -export([id/1, set_id/2, timestamp/1, match_fields/1, content/1]). 
--export([keypos/0, topic/0, new/2, new_from_content/1, encode/1]).
+%% Data interop
+-export([keypos/0, new/2, new_from_json/1, encode/1]).
+%% Helpers
 -export([gen_timestamp/0, gen_filter/1, parse_plist_to_mf/1]).
+%% Harbinger channel
+-export([subscribe/0, subscribe/1, send/1]).
 
 new(MF, C) ->
 	#data{ 
@@ -27,10 +32,9 @@ content(#data{ content=C }) -> C.
 
 keypos() -> #data.id.
 
-topic() -> ?MODULE.
-
-new_from_content(D) ->
-	{struct, PL} = mochijson2:decode(D),
+new_from_json(D) ->
+	{struct, _} = mochijson2:decode(D),
+	PL  = mochijson2:decode(D, [{format, proplist}]),
 	MFV = case clamorous:get_conf(match_fields) of
 		undefined -> PL;
 		[] -> PL;
@@ -71,4 +75,15 @@ parse_val(V) ->
 	try mochijson2:decode(V, [{format, proplist}])
 	catch _:_ -> V end.
 
+
+topic() -> 
+	?MODULE.
+subscribe() ->
+	harbinger:subscribe(topic()).
+subscribe(F) ->
+	harbinger:subscribe(topic(), F).
+send(#data{} = D) ->
+	harbinger:send(topic(), D);
+send(_) ->
+	erlang:error(badarg).
 

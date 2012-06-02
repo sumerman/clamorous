@@ -6,7 +6,7 @@
 -module(cl_ets_logger).
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
--include_lib("harbinger/include/harbinger.hrl").
+-include("../include/clamorous.hrl").
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -63,7 +63,7 @@ handle_info(cleanup_time, State) ->
 	set_timer(),
 	{noreply, S1};
 
-handle_info(?NOTIFICATION(_C, N), State) ->
+handle_info(?CLDATA(N), State) ->
 	insert_object(State, N),
 	{noreply, State}.
 

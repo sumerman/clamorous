@@ -1,0 +1,2 @@
+-include_lib("harbinger/include/harbinger.hrl").
+-define(CLDATA(D), ?NOTIFICATION(_,D)).
