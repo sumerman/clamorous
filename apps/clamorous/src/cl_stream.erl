@@ -11,21 +11,10 @@
 -include_lib("harbinger/include/harbinger.hrl").
 -record(state, {seq=0,mfs=[]}).
 
-gen_filter(MFF) ->
-	fun(_C, M) ->
-			MFs = cl_data:match_fields(M),
-			lists:all(fun({K,V}) ->
-						V1 = proplists:get_value(K,MFs),
-						V1 =:= V
-				end, MFF)
-	end.	
-
 init({_Any, http}, Req, []) ->
 	{QS, Req1}  = cowboy_http_req:qs_vals(Req),
-	{Bin, Req2} = cowboy_http_req:binding(seq, Req1),
-	harbinger:subscribe(cl_data:topic(), gen_filter(QS)),
-	Seq = try list_to_integer(binary_to_list(Bin))
-	catch _:_ -> new end,
+	{Seq, Req2} = clamorous_app:get_seq(Req1),
+	harbinger:subscribe(cl_data:topic(), cl_data:gen_filter(QS)),
 	{ok, Req2, #state{seq=Seq, mfs=QS}}.
 
 handle(Req, State) ->
@@ -43,19 +32,14 @@ handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
 handle_loop(Req, State) ->
 	receive
 		?NOTIFICATION(_C, M) ->
-			send_resp(Req, {
-					cl_data:id(M), 
-					cl_data:content(M)}),
+			send_resp(Req, M),
 			?MODULE:handle_loop(Req, State)
 	end.
 
 terminate(_Req, _State) ->
 	ok.
 
-send_resp(Req, {ID, Cont}) ->
-	Data = [mochijson2:encode([
-						{id,ID}, 
-						{data,{json, Cont}}
-						]), $\n],
-	cowboy_http_req:chunk(Data, Req).
+send_resp(Req, M) ->
+	cowboy_http_req:chunk(cl_data:encode(M), Req).
+
 

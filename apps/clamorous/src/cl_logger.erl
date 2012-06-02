@@ -92,7 +92,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 insert_object(State, O) ->
 	MF   = cl_data:match_fields(O),
-	Cont =  #idx{t=cont, k=cl_data:id(O), v=cl_data:content(O)}, 
+	Cont =  #idx{t=cont, k=cl_data:id(O), v=O}, 
 	Time =  #idx{t=time, k=cl_data:timestamp(O), v=cl_data:id(O)}, 
 	Prop = [#idx{t=prop, k=KV, v=cl_data:id(O)} || KV <- MF],
 	LRes = [Cont|[Time|Prop]],
@@ -120,7 +120,7 @@ set_timer() ->
 cleanup(#state{ backend=B, tab=T, min_id=PMin } = St) ->
 	{H, M, S} = clamorous:get_conf(history_storage_time),
 	Sec = (timer:hms(H, M, S) div timer:seconds(1)),
-	Now = cl_data:timestamp(cl_data:new([],[])),
+	Now = cl_data:gen_timestamp(),
 	Old = Now - Sec,
 	Agr = fun
 		(#idx{t=time,k=Tm,v=ID},MI) when (Tm=<Old) ->
@@ -139,7 +139,7 @@ do_select(St, LastID, MFs) when is_list(MFs) ->
 	Newer = gb_sets:from_list(sel_id_newer_than(St, LastID)),
 	SList = [gb_sets:from_list(sel_id_by_mf(St, LastID, MF)) || MF <- MFs],
 	IDs   = gb_sets:to_list(gb_sets:intersection([Newer|SList])),
-	[{ID,V} || ID <- IDs, V <- lookup(St, ID)];
+	[V || ID <- IDs, V <- lookup(St, ID)];
 do_select(St, LastID, MF) when is_tuple(MF) ->
 	do_select(St, LastID, [MF]).
 
