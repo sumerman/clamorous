@@ -13,7 +13,7 @@
 	{env, [ 
 		{port, 8080}, 
 		{discovery_port, 19090}, 
-		{discovery, true}, 
+		{discovery, false}, 
 		{cleanup_interval, 1}, 
 		{history_storage_time, {0,10,0}}, 
 		{match_fields, []} 

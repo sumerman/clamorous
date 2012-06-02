@@ -1,7 +1,7 @@
 +0) HTTP get and long poll
-1) Buddy detection (UDP b-cast)
+?1) Buddy detection (UDP b-cast)
 +2) Multi-Logger
 	+1) harbinger writes
 	+2) select regarding seq (local if suitable)
-	3) Test it	
+	+3) Test it	
 3) Plugins (mod + opts, prebacked shell mod)

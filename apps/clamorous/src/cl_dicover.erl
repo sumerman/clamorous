@@ -34,8 +34,19 @@ start_link() ->
 
 init(_Args) ->
 	P = clamorous:get_conf(discovery_port),
-	{ok, S} = gen_udp:open(P, [{active,true},binary,{broadcast,true},{reuseaddr,true}]),
-	timer:send_interval(?TIMEOUT, discovery_round),
+	E = clamorous:get_conf(discovery),
+	S = if 
+		E ->
+			{ok, S1} = gen_udp:open(P, [
+						binary,
+						{active,true},
+						{broadcast,true},
+						{reuseaddr,true}]),
+			timer:send_interval(?TIMEOUT, discovery_round),
+			S1;
+		true -> 
+			undefined
+	end,
 	{ok, S}.
 
 handle_call(_Request, _From, State) ->

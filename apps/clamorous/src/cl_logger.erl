@@ -18,7 +18,7 @@
 select(MFs) -> select(0, MFs).
 select(LastID, MFs) ->
 	P1 = list_servers(pg2:get_local_members(group()), LastID),
-	P2 = list_servers(pg2:get_members(group()), LastID),
+	P2 = list_servers(pg2:get_members(group()), undefined),
 	P3 = [pg2:get_closest_pid(group())],
 	case P1 ++ P2 ++ P3 of
 		[] -> {ok, []};
@@ -38,6 +38,10 @@ reg_as_logger() ->
 group() -> {?MODULE, group}.
 
 list_servers(Pids, LastID) ->
-	Resp = [{P,gen_server:call(P, min_stored)} || P <- Pids],
-	[P || {P,{ok,Min}} <- Resp, Min =< LastID].
+	F = fun(P) -> 
+			{ok, M} = gen_server:call(P, min_stored),
+			{M,P}
+	end,
+	Resp = lists:keysort(1, lists:map(F, Pids)),
+	[P || {M,P} <- Resp, M =< LastID].
 

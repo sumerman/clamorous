@@ -21,7 +21,7 @@
 -export([init/1, handle_call/3, handle_cast/2, 
 	handle_info/2, terminate/2, code_change/3]).
 
--record(state, { tab, backend=ets, min_id=0 }).
+-record(state, { tab, backend=ets, min_id }).
 -record(idx, {t,k,v}).
 
 %% ------------------------------------------------------------------
@@ -64,8 +64,8 @@ handle_info(cleanup_time, State) ->
 	{noreply, S1};
 
 handle_info(?CLDATA(N), State) ->
-	insert_object(State, N),
-	{noreply, State}.
+	S1 = insert_object(State, N),
+	{noreply, S1}.
 
 terminate(_Reason, _State) ->
 	ok.
@@ -77,13 +77,19 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
-insert_object(State, O) ->
+insert_object(#state{ min_id=MID } = State, O) ->
+	ID   = cl_data:id(O),
 	MF   = cl_data:match_fields(O),
-	Cont =  #idx{t=cont, k=cl_data:id(O), v=O}, 
-	Time =  #idx{t=time, k=cl_data:timestamp(O), v=cl_data:id(O)}, 
-	Prop = [#idx{t=prop, k=KV, v=cl_data:id(O)} || KV <- MF],
+	Cont =  #idx{t=cont, k=ID, v=O}, 
+	Time =  #idx{t=time, k=cl_data:timestamp(O), v=ID}, 
+	Prop = [#idx{t=prop, k=KV, v=ID} || KV <- MF],
 	LRes = [Cont|[Time|Prop]],
-	insert(State, LRes).
+	insert(State, LRes),
+	NID = if
+		ID < MID -> ID;
+		true -> MID
+	end,
+	State#state{ min_id=NID }.
 
 insert(#state{ backend=B, tab=T }, L) ->
 	B:insert(T, L).
