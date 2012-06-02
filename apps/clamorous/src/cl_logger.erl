@@ -23,7 +23,7 @@ select(LastID, MFs) ->
 	case P1 ++ P2 ++ P3 of
 		[] -> {ok, []};
 		[P|_] ->
-			gen_server:call(P, {select, LastID, MFs})
+			gen_server:call(P, {select, LastID, MFs}, infinity)
 	end.
 
 reg_as_logger() ->

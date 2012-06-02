@@ -50,7 +50,7 @@ handle_call(min_stored, _From, State) ->
 
 handle_call({select, LID, MFs}, _From, State) ->
 	R = {ok, do_select(State, LID, MFs)},
-	{reply, R, State};
+	{reply, R, State, hibernate};
 
 handle_call(_Request, _From, State) ->
 	{stop, badmsg, State}.

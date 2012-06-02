@@ -24,6 +24,8 @@ handle(Req, State) ->
 		{<<"Access-Control-Allow-Origin">>, <<"*">>}
 	],
 	{ok, Req2} = cowboy_http_req:chunked_reply(200, Headers, Req),
+	{ok, T, S} = cowboy_http_req:transport(Req2),
+	ok = T:setopts(S, [{active, true}]),
 	handle_hist(Req2, State),
 	handle_loop(Req2, State).
 
@@ -35,7 +37,9 @@ handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
 
 handle_loop(Req, State) ->
 	receive
-		shutdown ->
+		{tcp,_Socket,_Data} ->
+			{ok, Req, State};
+		{tcp_closed,_Socket} ->
 			{ok, Req, State};
 		?CLDATA(M) ->
 			send_resp(Req, M),
