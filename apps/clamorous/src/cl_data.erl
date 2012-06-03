@@ -69,8 +69,16 @@ extract_match_fields(PL) ->
 		undefined -> PL;
 		[] -> PL;
 		MFL when is_list(MFL) ->
-			[E || {F,_V}=E <- PL, lists:member(F, MFL)]
+			MFL1 = lists:map(fun norm_mf_cfg_item/1, MFL),
+			[E || {F,_V}=E <- PL, lists:member(F, MFL1)]
 	end.
+
+norm_mf_cfg_item(MFC) when is_atom(MFC) -> 
+	atom_to_binary(MFC, utf8);
+norm_mf_cfg_item(MFC) when is_list(MFC) -> 
+	iolist_to_binary(MFC);
+norm_mf_cfg_item(MFC) when is_binary(MFC) -> 
+	MFC.
 
 -spec new_from_plist(proplists:proplist()) -> cl_data().
 new_from_plist(PL) ->

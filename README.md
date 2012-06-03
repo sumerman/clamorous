@@ -4,8 +4,9 @@ Clamorous
 HTTP pub/sub service with complex filtering ability.
 
 Suppose you to have an intensive stream of events on the one side 
-and bunch of clients on the other. Futhermore each of those clients interested
-only in 1/100 of all events. **Clamorous** designed to solve exactly this kind of problems.
+and bunch of clients on the other. Futhermore, each of those clients 
+interested only in 1/100 of all events. **Clamorous** is designed to 
+solve exactly this kind of problems.
 
 Environment
 -----------
@@ -21,7 +22,8 @@ Features
 * HTTP streaming subscription.
 * HTTP long-polling subscription.
 * Subscription with conjunction of equations on fields and their values.
-* Ability to select the fields which should be indexed and may be used for subscription.
+* Ability to select the fields which should be indexed and may be used 
+for subscription.
 * In-memory log holds messages for fixed (customizable) period of time 
 and allows subscribers to read their stream 
 from the point where disconnect happened last time.
@@ -32,11 +34,13 @@ __Author:__ Valery Meleshkin ([`valery.meleshkin@gmail.com`](mailto:valery.meles
 HTTP interface
 --------------
 
-For now HTTP and JSON is the primal way to interact with the service so we start from it.
+For now HTTP and JSON is the primal way to interact 
+with the service so we start from it.
 
 ### Publish
 
-To publish a message you should issue a HTTP POST request carrying a JSON object(s) in its BODY.
+To publish a message you should issue a HTTP POST request 
+carrying a JSON object(s) in its BODY.
 
 You may publish one object:  
 `$ curl -XPOST http://localhost:8080/clamorous/publish -d "{\"foo\":\"bar\",\"idx\":0}"`
@@ -44,13 +48,14 @@ You may publish one object:
 
 Or an array of objects:  
 `$ curl -XPOST http://localhost:8080/clamorous/publish -d\    
-"[{\"foo\":\"bar\",\"idx\":0}, {\"foo\":\"bar\",\"idx\":1}]"`
+"[{\"foo\":\"bar\",\"idx\":0}, {\"foo\":\"bar\",\"idx\":1}]"`   
 `> {"status":"ok","description":"done"}`
 
 Anything but an object or an array of objects will be rejected.   
 Some or all fields of objects will be indexed just after publishing. 
 
-Actually session will not be closed and publisher will be able to continue pushing messages:
+Actually session will not be closed and publisher will be able 
+to continue pushing messages:
 
 `$ telnet localhost 8080`
 
@@ -112,15 +117,16 @@ And subsequent response will look like an array or a stream of objects similar t
 
 For example subscription via  
 `http://.../subscribe/stream/1338744023790433?username=bar&userid=2`
-will generate a stream of objects published after the one with ID `1338744023790433` and with field
-`username`=`bar` and field `userid`=`2`.  
+will generate a stream of objects published after the one with ID `1338744023790433` 
+and with field `username`=`bar` and field `userid`=`2`.
 Subscription via `http://.../subscribe/stream/new?username=bar&userid=2`
 produce the feed only with objects published after the subscription request 
 but with the same restrictions applied to the values of the fields.
 
-If you don't want to filter a stream somehow you may issue the request without any equations:  
-`http://.../subscribe/stream/new`.  
-As you already guessed with this kind of request comes the stream of all newly published messages.  
+If you don't want to filter a stream somehow you may issue 
+the request without any equations: `http://.../subscribe/stream/new`. 
+As you already guessed with this kind of request comes the 
+stream of all newly published messages.
 And `http://.../subscribe/stream/1338744023790433` in turn leads
 to the stream of objects published after one with ID `1338744023790433`.
 
@@ -141,8 +147,9 @@ Let's look closer to the types of subscriptions.
 
 #### Stream
 
-Stream requests is the ones which contains the word `stream` in their URL just after the word `subscribe`
-and subsequent response for them is an endless *chunked HTTP response* with `\n` separated JSON objects.
+Stream requests is the ones which contains the word `stream` in their URL 
+just after the word `subscribe` and subsequent response for them 
+is an endless *chunked HTTP response* with `\n` separated JSON objects.
 
 `$ curl http://localhost:8080/clamorous/subscribe/stream/0`
 
@@ -174,7 +181,7 @@ after one with given ID or connection hangs until one's arrival.
 	]
 
 `http://.../subscribe/wait/new?...` also may be useful
-it hangs until ???publishing??? of specified message:
+it waits of publishing of specified message:
 
 	[{"id":1338750771033455,"data":{"foo":"bar","idx":10,"bool":false,"array":[]}}
 	]
@@ -207,9 +214,58 @@ TODO
 Configuration
 -------------
 
+Here is the text of the node's config file with the default values.
+
+
+	[
+		{clamorous, [
+			{port,8080},		    % an a HTTP port to listen
+			{match_fields,[]},
+			{discovery,false},      % autodicovery switch
+			{discovery_port,19090}, % autodicovery port
+			{history_storage_time,{0,10,0}}
+		]},
+		{sasl, [
+			{sasl_error_logger, {file, "log/sasl-error.log"}},
+			{errlog_type, error},
+			{error_logger_mf_dir, "log/sasl"},      % Log directory
+			{error_logger_mf_maxbytes, 10485760},   % 10 MB max file size
+			{error_logger_mf_maxfiles, 5}           % 5 files max
+		]},
+		{lager, [
+			{crash_log, "log/crash.log"},
+			{handlers, [
+				{lager_console_backend, info},
+				{lager_file_backend, [
+					{"log/error.log", error, 10485760, "$D0", 5},
+					{"log/console.log", info, 10485760, "$D0", 5}
+				]}
+			]}
+		]}
+	].
+
+Let's take a closer look at the `clamorous` section, 
+[`sasl`](http://www.erlang.org/doc/apps/sasl/index.html) and
+[`lager`](https://github.com/basho/lager) is not my stuff, 
+their docs may be found at the corresponging project pages.
+
+
 ### In-memory cache
 
+To customize the amount of time for which every message would be
+available in history you may alter the value of the 
+`{history_storage_time,{H,M,S}}` entry where `H`, `M` and `S` 
+is Hours, Minutes and Seconds respectively.
+
 ### Match fields and big-documents
+
+For the case when messages are expected to have many fields only
+few of which would be used in subscriptions there may be match
+fields specification provided by setting the `match_fields` to
+the list of field's names, eg: `{match_fields,[idx, <<"foo">>, "bar"]}`. 
+Subscription filter would behave as if fields, which not mentioned 
+in this list, wasn't presented in a published message, but subscriber
+will receive the whole message.
 
 Build
 -----
@@ -219,10 +275,12 @@ To build **Clamorous** you need the machine with Erlang R15 installed.
 
 It can be started with `./rel/clamorous/bin/clamorous console` or  
 `... clamorous start` (do not forget to stop it :) 
-replace `start` with `stop` to do it). 
+replace `start` with `stop` to do it).
+Configs could be found at `./rel/clamorous/etc/app.config`
 
 It also can be copied to another machine and started 
 in there without separate Erlang installation.
+
 
 Distributed setup
 -----------------
