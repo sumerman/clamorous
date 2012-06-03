@@ -5,8 +5,8 @@
 %%% @doc ETS backend for logger interface
 %%% @see cl_logger
 %%%
-%%% This module relies on the fact, that IDs of cl_data
-%%% is ordered in time and unique.
+%%% This module relies on the fact that IDs of cl_data
+%%% are unique and ordered in time.
 %%%-------------------------------------------------------------------
 
 -module(cl_ets_logger).
@@ -95,17 +95,14 @@ insert_object(#state{ min_id=MID } = State, O) ->
 	Prop = [#idx{t=prop, k=KV, v=ID} || KV <- MF],
 	LRes = [Cont|[Time|Prop]],
 	insert(State, LRes),
-	NID = if
-		ID < MID -> ID;
-		true -> MID
-	end,
+	NID = min(ID, MID),
 	State#state{ min_id=NID }.
 
 insert(#state{ backend=B, tab=T }, L) ->
 	B:insert(T, L).
 
 %% @doc Select the IDs of all objects with given match field's values
-%% and created later than given LastID. (IDs time sequential)
+%% that have been created later than given LastID 
 -spec sel_id_by_mf(#state{}, cl_data:idt(), cl_data:match_field()) -> 
 	[cl_data:idt()].
 sel_id_by_mf(#state{ backend=B, tab=T }, LastID, {_K,_V}=MF) ->
@@ -141,10 +138,7 @@ point_in_past() ->
 -spec max_id_among_old_ones(#idx{}, {cl_data:idt(), cl_data:idt()}) -> 
 	{cl_data:idt(), cl_data:idt()}.
 max_id_among_old_ones(#idx{t=time,k=Tm,v=ID}, {Old, MI}) when (Tm=<Old) ->
-	if 
-		ID > MI -> {Old, ID}; 
-		true    -> {Old, MI} 
-	end;
+	{Old, max(ID, MI)};
 max_id_among_old_ones(_, A) -> A.
 
 cleanup(#state{ backend=B, tab=T, min_id=PMin } = St) ->
@@ -163,12 +157,19 @@ cleanup(#state{ backend=B, tab=T, min_id=PMin } = St) ->
 	St#state{ min_id=Min }.
 
 %% @doc Select all objects with given match field's values
-%% and created later than given LastID. (IDs time sequential)
+%% that have been created later than given LastID 
 -spec do_select(#state{}, cl_data:idt(), cl_data:match_fields()) ->
 	[cl_data:cl_data()].
+do_select(St, LastID, []) ->
+	IDs = sel_id_newer_than(St, LastID),
+	get_objects(St, IDs);
+
 do_select(St, LastID, MFs) when is_list(MFs) ->
-	Newer = gb_sets:from_list(sel_id_newer_than(St, LastID)),
 	SList = [gb_sets:from_list(sel_id_by_mf(St, LastID, MF)) || MF <- MFs],
-	IDs   = gb_sets:to_list(gb_sets:intersection([Newer|SList])),
-	[V || ID <- IDs, V <- lookup(St, ID)].
+	IDs   = gb_sets:to_list(gb_sets:intersection([SList])),
+	get_objects(St, IDs).
+
+get_objects(St, IDs) when is_list(IDs) ->
+	IDs1 = lists:usort(IDs),
+	[V || ID <- IDs1, V <- lookup(St, ID)].
 

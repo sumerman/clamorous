@@ -32,17 +32,22 @@ handle(Req, State) ->
 handle_hist(_Req, #state{seq=new} = State) -> State;
 handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
 	{ok, Items} = cl_logger:select(N, MF),
-	[send_resp(Req, I) || I <- Items],
-	State.
+	N1 = lists:foldl(fun(I, M) ->
+				M1 = send_resp(Req, I),
+				max(M, M1)
+		end, 0, Items),
+	State#state{ seq=N1 }.
 
-handle_loop(Req, State) ->
+handle_loop(Req, #state{ seq=N } = State) ->
 	receive
 		{tcp,_Socket,_Data} ->
 			{ok, Req, State};
 		{tcp_closed,_Socket} ->
 			{ok, Req, State};
 		?CLDATA(M) ->
-			send_resp(Req, M),
+			ID = cl_data:id(M),
+			% skip potential duplicates
+			(ID > N) andalso send_resp(Req, M),
 			?MODULE:handle_loop(Req, State)
 	end.
 
@@ -50,6 +55,7 @@ terminate(_Req, _State) ->
 	ok.
 
 send_resp(Req, M) ->
-	cowboy_http_req:chunk(cl_data:encode(M), Req).
+	cowboy_http_req:chunk(cl_data:encode(M), Req),
+	cl_data:id(M).
 
 

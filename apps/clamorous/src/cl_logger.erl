@@ -4,11 +4,11 @@
 %%%
 %%% @doc Logger interface.
 %%% Each logger should participate in the pg2 group
-%%% thus data may be selected from closest one, which holding
-%%% the requested data.
+%%% thus data may be selected from 
+%%% the closest one which holds requested data.
 %%%
-%%% This module relies on the fact, that IDs of cl_data
-%%% is ordered in time and unique.
+%%% This module relies on the fact that IDs of cl_data
+%%% are unique and ordered in time.
 %%%-------------------------------------------------------------------
 
 -module(cl_logger).
@@ -30,7 +30,7 @@
 select(MFs) -> select(undefined, MFs).
 
 %% @doc Select all objects with given match field's values
-%% and created later than given LastID 
+%% that have been created later than given LastID 
 %% from the most appropriate location.
 -spec select(cl_data:idt()|undefined, cl_data:match_fields()) -> 
 	{ok, [cl_data:cl_data()]} | {error, any()}.
@@ -61,7 +61,7 @@ group() -> {?MODULE, group}.
 -spec list_servers([pid()]|term(), cl_data:idt()|undefined) -> [pid()].
 list_servers(Pids, LastID) when is_list(Pids) ->
 	F = fun(P) -> 
-			{ok, M} = gen_server:call(P, min_stored),
+			{ok, M} = gen_server:call(P, min_stored, infinity),
 			{M,P}
 	end,
 	Resp = lists:keysort(1, lists:map(F, Pids)),

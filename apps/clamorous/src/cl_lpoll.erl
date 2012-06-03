@@ -34,7 +34,13 @@ to_json(Req, PName) ->
 		{true, []} -> recv(true);
 		_Else -> recv(false)
 	end,
-	Resp = cl_data:encode(New ++ Items),
+	% skip potential duplicates
+	Res  = lists:usort(fun(O1,O2) ->
+				ID1 = cl_data:id(O1), 
+				ID2 = cl_data:id(O2),
+				ID1 =< ID2
+			end, New ++ Items),
+	Resp = cl_data:encode(Res),
 	{Resp, Req2, PName}.
 
 subscribe(false, _) -> false;

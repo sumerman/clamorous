@@ -76,7 +76,9 @@ extract_match_fields(PL) ->
 new_from_plist(PL) ->
 	PL1 = norm_plist(PL),
 	MFV = extract_match_fields(PL1),
-	new(MFV, PL1).
+	DIO = mochijson2:encode(PL1),
+	DBN = iolist_to_binary(DIO),
+	new(MFV, {json, DBN}).
 
 -spec new_from_json(binary()|iolist()) -> cl_data().
 new_from_json(D) ->
