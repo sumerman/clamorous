@@ -219,7 +219,7 @@ Here is the text of the node's config file with the default values.
 
 	[
 		{clamorous, [
-			{port,8080},		    % an a HTTP port to listen
+			{port,8080},		    % a HTTP port to listen
 			{match_fields,[]},
 			{discovery,false},      % autodicovery switch
 			{discovery_port,19090}, % autodicovery port
