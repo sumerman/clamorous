@@ -26,10 +26,10 @@ handle(Req, State) ->
 	{ok, Req2} = cowboy_http_req:chunked_reply(200, Headers, Req),
 	{ok, T, S} = cowboy_http_req:transport(Req2),
 	ok = T:setopts(S, [{active, true}]),
-	handle_hist(Req2, State),
-	handle_loop(Req2, State).
+	handle_loop(Req2, handle_hist(Req2, State)).
 
-handle_hist(_Req, #state{seq=new} = State) -> State;
+handle_hist(_Req, #state{seq=new} = State) -> 
+	State#state{ seq=0 }; % receive should not skip anything
 handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
 	{ok, Items} = cl_logger:select(N, MF),
 	N1 = lists:foldl(fun(I, M) ->
@@ -47,7 +47,8 @@ handle_loop(Req, #state{ seq=N } = State) ->
 		?CLDATA(M) ->
 			ID = cl_data:id(M),
 			% skip potential duplicates
-			(ID > N) andalso send_resp(Req, M),
+			((ID > N) or (N == new)) 
+				andalso send_resp(Req, M),
 			?MODULE:handle_loop(Req, State)
 	end.
 

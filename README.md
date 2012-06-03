@@ -1,33 +1,208 @@
 Clamorous
 =========
 
-HTTP pub/sub service with complex filtering abilities.
+HTTP pub/sub service with complex filtering ability.
+
+Suppose you to have an intensive stream of events on the one side 
+and bunch of clients on the other. Futhermore each of those clients interested
+only in 1/100 of all events. **Clamorous** designed to solve exactly this kind of problems.
+
+Environment
+-----------
+* Few aggressive publishers.
+* Bunch of fastidious subscribers.
+* Both types of clients prefer long sessions.
+* Data outdates fast or very vast.
+* Data may be quite big, so not every field must be indexed.
+
+Features
+--------
+* Publishing via HTTP and Erlang interfaces.
+* HTTP streaming subscription.
+* HTTP long-polling subscription.
+* Subscription with conjunction of equations on fields and their values.
+* Ability to select the fields which should be indexed and may be used for subscription.
+* In-memory log holds messages for fixed (customizable) period of time 
+and allows subscribers to read their stream 
+from the point where disconnect happened last time.
+* Distributed installation.
 
 __Author:__ Valery Meleshkin ([`valery.meleshkin@gmail.com`](mailto:valery.meleshkin@gmail.com))
 
 HTTP interface
 --------------
 
+For now HTTP and JSON is the primal way to interact with the service so we start from it.
+
 ### Publish
 
-One object or array
+To publish a message you should issue a HTTP POST request carrying a JSON object(s) in its BODY.
 
-Fields 
+You may publish one object:  
+`$ curl -XPOST http://localhost:8080/clamorous/publish -d "{\"foo\":\"bar\",\"idx\":0}"`
+`> {"status":"ok","description":"done"}`
+
+Or an array of objects:  
+`$ curl -XPOST http://localhost:8080/clamorous/publish -d\    
+"[{\"foo\":\"bar\",\"idx\":0}, {\"foo\":\"bar\",\"idx\":1}]"`
+`> {"status":"ok","description":"done"}`
+
+Anything but an object or an array of objects will be rejected.   
+Some or all fields of objects will be indexed just after publishing. 
+
+Actually session will not be closed and publisher will be able to continue pushing messages:
+
+`$ telnet localhost 8080`
+
+	-Trying 127.0.0.1...
+	-Connected to localhost.
+	-Escape character is '^]'.
+	<POST /clamorous/publish HTTP/1.1
+	<Host: localhost:8080
+	<Content-Length: 22
+	<
+	<{"foo":"http","omg":2}
+	
+	>HTTP/1.1 200 OK
+	>Access-Control-Allow-Origin: *
+	>Variances: Accept
+	>Content-Type: application/json
+	>Content-Length: 36
+	>Date: Sun, 03 Jun 2012 17:20:17 GMT
+	>Server: Cowboy
+	>Connection: keep-alive
+	>
+	>{"status":"ok","description":"done"}
+
+	<POST /clamorous/publish HTTP/1.1
+	<Host: localhost:8080
+	<Content-Length: 22
+	<
+	<{"foo":"http","omg":3}
+	
+	>HTTP/1.1 200 OK
+	>Access-Control-Allow-Origin: *
+	>Variances: Accept
+	>Content-Type: application/json
+	>Content-Length: 36
+	>Date: Sun, 03 Jun 2012 17:20:23 GMT
+	>Server: Cowboy
+	>Connection: keep-alive
+	>
+	>{"status":"ok","description":"done"}
+
+	-...
 
 ### Subscribe
 
-Duplicates!
+Subscriptions! The party is because of them!
+
+All kinds of subscriptions share some concepts:
+
+1. *HTTP GET* requests.
+2. Sequenced IDs.
+3. Fields equations.
+
+URL of subscription may look like this:  
+`http://host:port/clamorous/subscribe/TYPE/SEQ?F1=V1&F2=V2&...`  
+Where **SEQ** may be some magic-number (we will talk about it later) or word `new`.  
+**Fi** should be the name of the field in a JSON which expected to be equal to **Vi**.  
+And subsequent response will look like an array or a stream of objects similar to  
+`{"id":SEQ,"data":{"F1":"V1","F1":V1}}`
+
+For example subscription via  
+`http://.../subscribe/stream/1338744023790433?username=bar&userid=2`
+will generate a stream of objects published after the one with ID `1338744023790433` and with field
+`username`=`bar` and field `userid`=`2`.  
+Subscription via `http://.../subscribe/stream/new?username=bar&userid=2`
+produce the feed only with objects published after the subscription request 
+but with the same restrictions applied to the values of the fields.
+
+If you don't want to filter a stream somehow you may issue the request without any equations:  
+`http://.../subscribe/stream/new`.  
+As you already guessed with this kind of request comes the stream of all newly published messages.  
+And `http://.../subscribe/stream/1338744023790433` in turn leads
+to the stream of objects published after one with ID `1338744023790433`.
+
+You even able to issue something like:  
+`http://localhost:8080/clamorous/subscribe/stream/0`  
+But be ready to wait and receive **ALL** objects stored in history
+and than all newly published objects.  
+**Be very careful with this kind of requests!  
+Clamorous is not designed for coping this constantly!**
+
+With the help of the sequenced IDs you could continue a subscription after reconnect
+from message next to the last received one. As if nothing happened. 
+(Actually only if the time passed from disconnection is less 
+than max storage time of the history item.
+Otherwise some messages may be dropped).
+
+Let's look closer to the types of subscriptions.
 
 #### Stream
 
+Stream requests is the ones which contains the word `stream` in their URL just after the word `subscribe`
+and subsequent response for them is an endless *chunked HTTP response* with `\n` separated JSON objects.
+
+`$ curl http://localhost:8080/clamorous/subscribe/stream/0`
+
+	{"id":1338744719249356,"data":{"foo":"bar","idx":10,"bool":false,"array":[]}}
+	{"id":1338744719267724,"data":{"foo":"bar","idx":11,"bool":false,"array":[]}}
+	{"id":1338744719280400,"data":{"foo":"bar","idx":12,"bool":false,"array":[]}}
+	{"id":1338744719294237,"data":{"foo":"bar","idx":13,"bool":false,"array":[]}}
+	...
+
+`$ curl http://localhost:8080/clamorous/subscribe/stream/1338744719249356?foo=bar\&idx=11`
+
+	{"id":1338744719267724,"data":{"foo":"bar","idx":11,"bool":false,"array":[]}}
+	{"id":1338750084433716,"data":{"foo":"bar","idx":11,"bool":false,"array":[]}}
+	...
+
 #### Long poll
 
+To issue long-polling request one should put the word `wait` 
+in the place of request TYPE. In response you (almost) instantly get 
+all messages (as an array of JSON objects) published 
+after one with given ID or connection hangs until one's arrival.
+
+`$ curl http://localhost:8080/clamorous/subscribe/wait/1338744719280400`
+
+	[{"id":1338750084379212,"data":{"foo":"bar","idx":10,"bool":false,"array":[]}}
+	,{"id":1338750084405974,"data":{"foo":"bar","idx":11,"bool":false,"array":[]}}
+	,{"id":1338750084419787,"data":{"foo":"bar","idx":12,"bool":false,"array":[]}}
+	,{"id":1338750084433716,"data":{"foo":"bar","idx":13,"bool":false,"array":[]}}
+	]
+
+`http://.../subscribe/wait/new?...` also may be useful
+it hangs until ???publishing??? of specified message:
+
+	[{"id":1338750771033455,"data":{"foo":"bar","idx":10,"bool":false,"array":[]}}
+	]
+
 #### Get
+
+Get requests is very similar to their long-polling bros, 
+but they never waits for anything.
+
+`curl http://localhost:8080/clamorous/subscribe/get/1338744719280400`
+
+	[{"id":1338750084433716,"data":{"foo":"bar","idx":13,"bool":false,"array":[]}}
+	...
+	,{"id":1338750771184385,"data":{"foo":"bar","idx":13,"bool":false,"array":[]}}
+	]
+
+Get `new` is useless since it will always return `[]`.
+(at least in current implementation)
 
 Erlang interface
 ----------------
 
+For now there is *public* Erlang API only for publishing.  
+I hope I'll be able to describe it's counterpart in the near future :)
+
 ### Publish
+
+TODO
 
 Configuration
 -------------
@@ -39,10 +214,23 @@ Configuration
 Build
 -----
 
+To build **Clamorous** you need the machine with Erlang R15 installed.  
+`make rel` should produce working Erlang-release in the `./rel/clamorous` folder.  
+
+It can be started with `./rel/clamorous/bin/clamorous console` or  
+`... clamorous start` (do not forget to stop it :) 
+replace `start` with `stop` to do it). 
+
+It also can be copied to another machine and started 
+in there without separate Erlang installation.
+
 Distributed setup
 -----------------
+
+TODO
 
 Performance
 -----------
 
+TODO
 Load vs get-history vs wipe-history

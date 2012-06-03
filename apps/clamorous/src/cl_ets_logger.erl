@@ -48,6 +48,7 @@ init(_Args) ->
 	cl_logger:reg_as_logger(),
 	T = ets:new(?MODULE, [
 			duplicate_bag,
+			%protected,
 			{keypos, #idx.k},
 			{read_concurrency, true}]),
 	set_timer(),
@@ -57,7 +58,14 @@ handle_call(min_stored, _From, State) ->
 	R = {ok, State#state.min_id},
 	{reply, R, State};
 
-handle_call({select, LID, MFs}, _From, State) ->
+%% TODO there should be some concurrency restriction mechanism
+%% to prevent 100+ simultaneous access attempts
+%% probably pool of workers
+%handle_call({select, true, LID, MFs}, _From, State) ->
+	%R = {ok, fun() -> do_select(State, LID, MFs) end},
+	%{reply, R, State};
+
+handle_call({select, _Local, LID, MFs}, _From, State) ->
 	R = {ok, do_select(State, LID, MFs)},
 	{reply, R, State, hibernate};
 
@@ -166,7 +174,7 @@ do_select(St, LastID, []) ->
 
 do_select(St, LastID, MFs) when is_list(MFs) ->
 	SList = [gb_sets:from_list(sel_id_by_mf(St, LastID, MF)) || MF <- MFs],
-	IDs   = gb_sets:to_list(gb_sets:intersection([SList])),
+	IDs   = gb_sets:to_list(gb_sets:intersection(SList)),
 	get_objects(St, IDs).
 
 get_objects(St, IDs) when is_list(IDs) ->

@@ -41,9 +41,17 @@ select(LastID, MFs) ->
 	P  = hd(P1 ++ P2 ++ P3),
 	if
 		is_pid(P) ->
-			gen_server:call(P, {select, LastID, MFs}, infinity);
+			retrive(P, LastID, MFs);
 		true ->
 			{ok, []}
+	end.
+
+retrive(P, LastID, MFs) ->
+	Local = (node(P) == node()),
+	case gen_server:call(P, {select, Local, LastID, MFs}, infinity) of
+		{ok, F} when is_function(F) ->
+			{ok, F()};
+		R -> R
 	end.
 
 -spec reg_as_logger() -> ok.
