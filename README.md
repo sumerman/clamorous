@@ -135,7 +135,7 @@ You even able to issue something like:
 But be ready to wait and receive **ALL** objects stored in history
 and than all newly published objects.  
 **Be very careful with this kind of requests!  
-Clamorous is not designed for coping this constantly!**
+Clamorous is not designed for coping with this constantly!**
 
 With the help of the sequenced IDs you could continue a subscription after reconnect
 from message next to the last received one. As if nothing happened. 
