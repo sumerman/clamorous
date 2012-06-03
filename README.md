@@ -265,7 +265,8 @@ fields specification provided by setting the `match_fields` to
 the list of field's names, eg: `{match_fields,[idx, <<"foo">>, "bar"]}`. 
 Subscription filter would behave as if fields, which not mentioned 
 in this list, wasn't presented in a published message, but subscriber
-will receive the whole message.
+will receive the whole message. Empty `match_fields` spec list means
+that every field in every object will be indexed.
 
 Build
 -----
