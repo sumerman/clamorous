@@ -254,8 +254,8 @@ their docs may be found at the corresponging project pages.
 
 To customize the amount of time for which every message would be
 available in history you may alter the value of the 
-`{history_storage_time,{H,M,S}}` entry where `H`, `M` and `S` 
-is Hours, Minutes and Seconds respectively.
+`{history_storage_time,{H,M,S}}` entry, where `H`, `M` and `S` 
+is *Hours*, *Minutes* and *Seconds* respectively.
 
 ### Match fields and big-documents
 
