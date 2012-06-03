@@ -17,23 +17,25 @@
 to_path(L) ->
 	[atom_to_binary(I,latin1) || I <- L].
 
+routes(App, false) -> [
+		{to_path([App, subscribe, stream]),           cl_stream, []},
+		{to_path([App, subscribe, stream]) ++ [?SEQ], cl_stream, []},
+		{to_path([App, subscribe, wait])   ++ [?SEQ], cl_lpoll,  []},
+		{to_path([App, subscribe, get])    ++ [?SEQ], cl_lpoll,  [{long,false}]}];
+routes(App, _Publish) ->
+	Pub = {to_path([App, publish]), cl_send, []},
+	[Pub | routes(App, false)].
+
 start(_StartType, _StartArgs) ->
 	{ok, App} = application:get_application(),
-	Disp = [
-		{'_', [
-				{to_path([App, publish]),                     cl_send,   []},
-				{to_path([App, subscribe, stream]),           cl_stream, []},
-				{to_path([App, subscribe, stream]) ++ [?SEQ], cl_stream, []},
-				{to_path([App, subscribe, wait])   ++ [?SEQ], cl_lpoll,  []},
-				{to_path([App, subscribe, get])    ++ [?SEQ], cl_lpoll,  [{lpoll,false}]}
-		]}
-	],
+	Publ = clamorous:get_conf(publish),
 	Port = clamorous:get_conf(port),
-	cowboy:start_listener(introspec_http, ?ACCEPTORS_COUT,
+	Disp = [{'_', routes(App, Publ)}],
+	Spec = cowboy:child_spec(?MODULE, ?ACCEPTORS_COUT,
 		cowboy_tcp_transport, [{port, Port}],
 		cowboy_http_protocol, [{dispatch, Disp}, {timeout, infinity}]
 	),
-    clamorous_sup:start_link().
+    clamorous_sup:start_link([Spec]).
 
 stop(_State) ->
     ok.

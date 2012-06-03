@@ -11,6 +11,7 @@
 
 -export([get_id/0]).
 
+-spec get_id() -> non_neg_integer().
 get_id() ->
 	{M,S,U}=erlang:now(), 
 	M*1000*1000*1000*1000+S*1000*1000+U.

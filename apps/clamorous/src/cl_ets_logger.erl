@@ -1,6 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @author Meleshkin Valery
 %%% @copyright 2012 T-Platforms
+%%%
+%%% @doc ETS backend for logger interface
+%%% @see cl_logger
+%%%
+%%% This module relies on the fact, that IDs of cl_data
+%%% is ordered in time and unique.
 %%%-------------------------------------------------------------------
 
 -module(cl_ets_logger).
@@ -12,7 +18,7 @@
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([start_link/0]).
+-export([start_link/0, force_cleanup/0]).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Exports
@@ -29,7 +35,10 @@
 %% ------------------------------------------------------------------
 
 start_link() ->
-	gen_server:start_link(?MODULE, [], []).
+	gen_server:start_link({local,?SERVER}, ?MODULE, [], []).
+
+force_cleanup() ->
+	?SERVER ! cleanup_time.
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
@@ -77,6 +86,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
+-spec insert_object(#state{}, cl_data:cl_data()) -> #state{}.
 insert_object(#state{ min_id=MID } = State, O) ->
 	ID   = cl_data:id(O),
 	MF   = cl_data:match_fields(O),
@@ -94,12 +104,23 @@ insert_object(#state{ min_id=MID } = State, O) ->
 insert(#state{ backend=B, tab=T }, L) ->
 	B:insert(T, L).
 
+%% @doc Select the IDs of all objects with given match field's values
+%% and created later than given LastID. (IDs time sequential)
+-spec sel_id_by_mf(#state{}, cl_data:idt(), cl_data:match_field()) -> 
+	[cl_data:idt()].
 sel_id_by_mf(#state{ backend=B, tab=T }, LastID, {_K,_V}=MF) ->
-	Expr = [{#idx{t=prop,k=MF,v='$1', _='_'},[{'>','$1',LastID}],['$1']}],
+	Expr = [{#idx{t=prop,k=MF,v='$1', _='_'},
+				[{'>','$1',LastID}],
+				['$1']}],
 	B:select(T, Expr).
 
+%% @doc Select the IDs of all objects created later than given LastID. 
+-spec sel_id_newer_than(#state{}, cl_data:idt()) -> 
+	[cl_data:idt()].
 sel_id_newer_than(#state{ backend=B, tab=T }, ID) ->
-	Expr = [{#idx{t=cont,k='$1', _='_'},[{'>','$1',ID}],['$1']}],
+	Expr = [{#idx{t=cont,k='$1', _='_'},
+				[{'>','$1',ID}],
+				['$1']}],
 	B:select(T, Expr).
 
 lookup(#state{ backend=B, tab=T }, Key) ->
@@ -110,12 +131,15 @@ set_timer() ->
 	M = clamorous:get_conf(cleanup_interval),
 	erlang:send_after(timer:minutes(M), self(), cleanup_time).
 
+-spec point_in_past() -> cl_data:timestamp().
 point_in_past() ->
 	{H, M, S} = clamorous:get_conf(history_storage_time),
 	Sec = (timer:hms(H, M, S) div timer:seconds(1)),
 	Now = cl_data:gen_timestamp(),
 	Now - Sec.
 
+-spec max_id_among_old_ones(#idx{}, {cl_data:idt(), cl_data:idt()}) -> 
+	{cl_data:idt(), cl_data:idt()}.
 max_id_among_old_ones(#idx{t=time,k=Tm,v=ID}, {Old, MI}) when (Tm=<Old) ->
 	if 
 		ID > MI -> {Old, ID}; 
@@ -129,18 +153,22 @@ cleanup(#state{ backend=B, tab=T, min_id=PMin } = St) ->
 	{_O, Min} = B:foldl(fun max_id_among_old_ones/2, {Old, PMin}, T),
 	Exp = [
 		% meta
-		{#idx{v='$1', _='_'},[{'<','$1',Min}],[true]},
+		{#idx{v='$1', _='_'},
+				[{'<','$1',Min}],[true]},
 		% content
-		{#idx{t=cont, k='$1', _='_'},[{'<','$1',Min}],[true]}
+		{#idx{t=cont, k='$1', _='_'},
+				[{'<','$1',Min}],[true]}
 	],
 	B:select_delete(T, Exp),
 	St#state{ min_id=Min }.
 
+%% @doc Select all objects with given match field's values
+%% and created later than given LastID. (IDs time sequential)
+-spec do_select(#state{}, cl_data:idt(), cl_data:match_fields()) ->
+	[cl_data:cl_data()].
 do_select(St, LastID, MFs) when is_list(MFs) ->
 	Newer = gb_sets:from_list(sel_id_newer_than(St, LastID)),
 	SList = [gb_sets:from_list(sel_id_by_mf(St, LastID, MF)) || MF <- MFs],
 	IDs   = gb_sets:to_list(gb_sets:intersection([Newer|SList])),
-	[V || ID <- IDs, V <- lookup(St, ID)];
-do_select(St, LastID, MF) when is_tuple(MF) ->
-	do_select(St, LastID, [MF]).
+	[V || ID <- IDs, V <- lookup(St, ID)].
 

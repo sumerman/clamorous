@@ -11,7 +11,7 @@
 init(_Trasp, _Req, Opts) ->
 	% I need to pass option somewhow, so 
 	% blame cowboy's REST for this :)
-	put(lpoll,proplists:get_value(lpoll, Opts, true)),
+	put(lpoll, proplists:get_value(long, Opts, true)),
 	{upgrade, protocol, cowboy_http_rest}.
 
 content_types_provided(Req, State) ->
@@ -27,7 +27,7 @@ to_json(Req, PName) ->
 	LPoll = get(lpoll),
 	{QS,  Req1} = cowboy_http_req:qs_vals(Req),
 	{Seq, Req2} = clamorous_app:get_seq(Req1),
-	MF = cl_data:parse_plist_to_mf(QS), 
+	MF = cl_data:parse_qs_to_mf(QS), 
 	subscribe(LPoll, MF),
 	Items = hist(Seq, MF),
 	New = case {LPoll, Items} of

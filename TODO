@@ -4,6 +4,10 @@
 	+1) harbinger writes
 	+2) select regarding seq (local if suitable)
 	+3) Test it	
+	4) Select_count and max_count restriction
+	5) Ranges with max_count items?
 3) Binary disk-logger for long term message history
-4) Potential message misses under extream loads
-5) Plugins (mod + opts, prebacked shell mod)
+4) Tests and docs
+5) Fix potential message loss under extreme load
+6) SSL?
+7) Plugins (mod + opts, prebacked shell mod)

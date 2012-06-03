@@ -14,7 +14,7 @@
 init({_Any, http}, Req, []) ->
 	{QS, Req1}  = cowboy_http_req:qs_vals(Req),
 	{Seq, Req2} = clamorous_app:get_seq(Req1),
-	MF = cl_data:parse_plist_to_mf(QS),
+	MF = cl_data:parse_qs_to_mf(QS),
 	cl_data:subscribe(cl_data:gen_filter(MF)),
 	{ok, Req2, #state{seq=Seq, mfs=MF}}.
 

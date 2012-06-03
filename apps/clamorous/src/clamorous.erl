@@ -5,19 +5,40 @@
 
 -module(clamorous).
 
--export([start/0, stop/0, get_conf/1]).
+-export([start/0, start/1, stop/0, get_conf/1]).
+-export([send/2, send_plist/1, send_json/1]).
+
+%% Public API
 
 start() ->
-	start_with_deps(?MODULE).
+	start([]).
+
+start(Opts) ->
+	start_with_deps(?MODULE,  Opts).
 
 stop() ->
     application:stop(?MODULE).
 
-start_with_deps(A) ->
+-spec send(cl_data:match_fields(), any()) -> true.
+send(MatchFields, Data) when is_list(MatchFields) ->
+	cl_data:send(cl_data:new(MatchFields, Data)).
+
+-spec send_plist(proplists:proplist()) -> true.
+send_plist(PL) ->
+	cl_data:send(cl_data:new_from_plist(PL)).
+
+-spec send_json(binary()|iolist()) -> true.
+send_json(JSON) ->
+	cl_data:send(cl_data:new_from_json(JSON)).
+
+%% Helper functions and Private API
+
+start_with_deps(A, Opts) ->
 	application:load(A),
 	{ok, Ks} = application:get_all_key(A),
 	Deps = proplists:get_value(applications, Ks, []),
 	lists:foreach(fun ensure_started/1, Deps),
+	[application:set_env(A, K, V) || {K, V} <- Opts],
     application:start(A).
 
 ensure_started(A) ->
@@ -27,6 +48,7 @@ ensure_started(A) ->
 	end.
 
 get_conf(K) ->
+	% All defaults sould be in app.src!
 	case application:get_env(?MODULE, K) of
 		{ok, V} -> V;
 		V -> V

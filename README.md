@@ -11,6 +11,7 @@ HTTP interface
 ### Publish
 
 One object or array
+
 Fields 
 
 ### Subscribe
@@ -20,6 +21,11 @@ Fields
 #### Long poll
 
 #### Get
+
+Erlang interface
+----------------
+
+### Publish
 
 Configuration
 -------------
