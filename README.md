@@ -3,10 +3,12 @@ Clamorous
 
 HTTP pub/sub service with complex filtering ability.
 
-Suppose you to have an intensive stream of events on the one side 
-and bunch of clients on the other. Futhermore, each of those clients 
+Suppose you have an intensive stream of events on the one side 
+and bunch of clients on the other. Futhermore, each of those clients is 
 interested only in 1/100 of all events. **Clamorous** is designed to 
 solve exactly this kind of problems.
+
+__Author:__ Valery Meleshkin ([`valery.meleshkin@gmail.com`](mailto:valery.meleshkin@gmail.com))
 
 Environment
 -----------
@@ -29,12 +31,10 @@ and allows subscribers to read their stream
 from the point where disconnect happened last time.
 * Distributed installation.
 
-__Author:__ Valery Meleshkin ([`valery.meleshkin@gmail.com`](mailto:valery.meleshkin@gmail.com))
-
 HTTP interface
 --------------
 
-For now HTTP and JSON is the primal way to interact 
+For now HTTP and JSON are the primal way to interact 
 with the service so we start from it.
 
 ### Publish
@@ -111,43 +111,43 @@ All kinds of subscriptions share some concepts:
 An URL of a subscription may look like this:  
 `http://host:port/clamorous/subscribe/TYPE/SEQ?F1=V1&F2=V2&...`  
 Where **SEQ** may be a magic-number (we will talk about it later) or the word `new`.  
-**Fi** should be the name of the field in a JSON which expected to be equal to **Vi**.  
+**Fi** should be the name of the field in a JSON which is expected to be equal to **Vi**.  
 And subsequent response will look like an array or a stream of objects similar to  
 `{"id":SEQ,"data":{"F1":"V1","F1":V1}}`
 
 For example subscription via  
 `http://.../subscribe/stream/1338744023790433?username=bar&userid=2`
-will generate a stream of objects published after the one with ID `1338744023790433` 
-and with field `username`=`bar` and field `userid`=`2`.
+will generate a stream of objects published after the one with ID 
+`1338744023790433` and with field `username`=`bar` and field `userid`=`2`.
 Subscription via `http://.../subscribe/stream/new?username=bar&userid=2`
-produce the feed with objects published after the subscription request only
-but with the same restrictions applied to the values of the fields.
+produce the feed with objects published after the subscription request 
+only but with the same restrictions applied to the values of the fields.
 
 If you don't want to filter a stream somehow you may issue 
 the request without any equations: `http://.../subscribe/stream/new`. 
-As you already guessed with this kind of request comes the 
+As you could have already guessed with this kind of request comes the 
 stream of all newly published messages.
 And `http://.../subscribe/stream/1338744023790433` in turn leads
 to the stream of objects published after one with ID `1338744023790433`.
 
-You even able to issue something like:  
+You even are able to issue something like:  
 `http://localhost:8080/clamorous/subscribe/stream/0`  
 But be ready to wait and receive **ALL** objects stored in the 
 history and than all newly published objects.  
 **Be very careful with this kind of requests!  
 Clamorous is not designed for coping with this constantly!**
 
-With the help of sequenced IDs you could continue a subscription after reconnect
-from the message next to the last received one. As if nothing happened. 
-(Actually only if the time passed from disconnection is less 
-than max storage time of the history item.
-Otherwise some messages may be dropped).
+With the help of sequenced IDs you can continue a subscription after 
+reconnect from the message next to the last received one. As if nothing 
+happened. (Actually only if the time passed from disconnection is less 
+than max storage time of the history item. Otherwise some messages 
+may be dropped).
 
 Let's look closer to the types of subscriptions.
 
 #### Stream
 
-Stream requests is the ones which contains the word `stream` in their URL 
+Stream requests are the ones which contain the word `stream` in their URL 
 just after the word `subscribe` and subsequent response for them 
 is an endless *chunked HTTP response* with `\n` separated JSON objects.
 
@@ -167,7 +167,7 @@ is an endless *chunked HTTP response* with `\n` separated JSON objects.
 
 #### Long poll
 
-To issue long-polling request one should put the word `wait` 
+To issue long-polling request you should put the word `wait` 
 in the place of request TYPE. In response you (almost) instantly get 
 all messages (as an array of JSON objects) published 
 after one with given ID or connection hangs until one's arrival.
@@ -180,7 +180,7 @@ after one with given ID or connection hangs until one's arrival.
 	,{"id":1338750084433716,"data":{"foo":"bar","idx":13,"bool":false,"array":[]}}
 	]
 
-`http://.../subscribe/wait/new?...` also may be useful
+`http://.../subscribe/wait/new?...` also may be useful;
 it waits of publishing of specified message:
 
 	[{"id":1338750771033455,"data":{"foo":"bar","idx":10,"bool":false,"array":[]}}
@@ -188,8 +188,8 @@ it waits of publishing of specified message:
 
 #### Get
 
-Get requests is very similar to their long-polling bros, 
-but they never waits for anything.
+Get requests are very similar to their long-polling bros, 
+but they never wait for anything.
 
 `curl http://localhost:8080/clamorous/subscribe/get/1338744719280400`
 
@@ -198,14 +198,14 @@ but they never waits for anything.
 	,{"id":1338750771184385,"data":{"foo":"bar","idx":13,"bool":false,"array":[]}}
 	]
 
-Get `new` is useless since it will always return `[]`.
-(at least in current implementation)
+Get request with `SEQ`=`new` is useless since it will always return `[]`.
+(At least in the current implementation)
 
 Erlang interface
 ----------------
 
 For now there is *public* Erlang API only for publishing.  
-I hope I'll be able to describe it's counterpart in the near future :)
+I hope I'll be able to describe its counterpart in the near future :)
 
 ### Publish
 
@@ -246,7 +246,7 @@ Here is the text of the node's config file with the default values.
 
 Let's take a closer look at the `clamorous` section, 
 [`sasl`](http://www.erlang.org/doc/apps/sasl/index.html) and
-[`lager`](https://github.com/basho/lager) is not my stuff, 
+[`lager`](https://github.com/basho/lager) are not my stuff, 
 their docs may be found at the corresponging project pages.
 
 
@@ -262,9 +262,9 @@ is *Hours*, *Minutes* and *Seconds* respectively.
 For the case when messages are expected to have many fields only
 few of which would be used in subscriptions there may be match
 fields specification provided by setting the `match_fields` to
-the list of field's names, eg: `{match_fields,[idx, <<"foo">>, "bar"]}`. 
-Subscription filter would behave as if fields, which not mentioned 
-in this list, wasn't presented in a published message, but subscriber
+the list of field's names, e.g.: `{match_fields,[idx, <<"foo">>, "bar"]}`. 
+Subscription filter will behave as if fields, which is not mentioned 
+in this list, weren't presented in a published message, but subscriber
 will receive the whole message. Empty `match_fields` spec list means
 that every field in every object will be indexed.
 
@@ -277,10 +277,10 @@ To build **Clamorous** you need the machine with Erlang R15 installed.
 It can be started with `./rel/clamorous/bin/clamorous console` or  
 `... clamorous start` (do not forget to stop it :) 
 replace `start` with `stop` to do it).
-Configs could be found at `./rel/clamorous/etc/app.config`
+Configs can be found at `./rel/clamorous/etc/app.config`
 
 It also can be copied to another machine and started 
-in there without separate Erlang installation.
+there without separate Erlang installation.
 
 
 Distributed setup
