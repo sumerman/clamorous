@@ -54,7 +54,7 @@ Or an array of objects:
 Anything but an object or an array of objects will be rejected.   
 Some or all fields of objects will be indexed just after publishing. 
 
-Actually session will not be closed and publisher will be able 
+Actually the session will not be closed and publisher will be able 
 to continue pushing messages:
 
 `$ telnet localhost 8080`
@@ -108,9 +108,9 @@ All kinds of subscriptions share some concepts:
 2. Sequenced IDs.
 3. Fields equations.
 
-URL of subscription may look like this:  
+An URL of a subscription may look like this:  
 `http://host:port/clamorous/subscribe/TYPE/SEQ?F1=V1&F2=V2&...`  
-Where **SEQ** may be some magic-number (we will talk about it later) or word `new`.  
+Where **SEQ** may be a magic-number (we will talk about it later) or the word `new`.  
 **Fi** should be the name of the field in a JSON which expected to be equal to **Vi**.  
 And subsequent response will look like an array or a stream of objects similar to  
 `{"id":SEQ,"data":{"F1":"V1","F1":V1}}`
@@ -120,7 +120,7 @@ For example subscription via
 will generate a stream of objects published after the one with ID `1338744023790433` 
 and with field `username`=`bar` and field `userid`=`2`.
 Subscription via `http://.../subscribe/stream/new?username=bar&userid=2`
-produce the feed only with objects published after the subscription request 
+produce the feed with objects published after the subscription request only
 but with the same restrictions applied to the values of the fields.
 
 If you don't want to filter a stream somehow you may issue 
@@ -132,13 +132,13 @@ to the stream of objects published after one with ID `1338744023790433`.
 
 You even able to issue something like:  
 `http://localhost:8080/clamorous/subscribe/stream/0`  
-But be ready to wait and receive **ALL** objects stored in history
-and than all newly published objects.  
+But be ready to wait and receive **ALL** objects stored in the 
+history and than all newly published objects.  
 **Be very careful with this kind of requests!  
 Clamorous is not designed for coping with this constantly!**
 
-With the help of the sequenced IDs you could continue a subscription after reconnect
-from message next to the last received one. As if nothing happened. 
+With the help of sequenced IDs you could continue a subscription after reconnect
+from the message next to the last received one. As if nothing happened. 
 (Actually only if the time passed from disconnection is less 
 than max storage time of the history item.
 Otherwise some messages may be dropped).
