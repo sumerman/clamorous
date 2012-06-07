@@ -46,9 +46,13 @@ force_cleanup() ->
 
 init(_Args) ->
 	cl_logger:reg_as_logger(),
-	T = ets:new(?MODULE, [
+	%T = ets:new(?MODULE, [
+			%duplicate_bag,
+			%%protected,
+			%{keypos, #idx.k},
+			%{read_concurrency, true}]),
+	{ok,T} = cl_ets_heir:new(?MODULE, [
 			duplicate_bag,
-			%protected,
 			{keypos, #idx.k},
 			{read_concurrency, true}]),
 	set_timer(),

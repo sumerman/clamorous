@@ -34,6 +34,7 @@ start_link(Spec) ->
 init(ESpec) ->
 	Spec = [
 		?CHILDW(cl_dicover, []),
+		?CHILDW(cl_ets_heir, []),
 		?CHILDW(cl_ets_logger, [])
 	],
     {ok, { {one_for_one, 5, 10}, (Spec ++ ESpec)} }.
