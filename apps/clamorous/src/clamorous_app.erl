@@ -31,13 +31,14 @@ start(_StartType, _StartArgs) ->
 	Publ = clamorous:get_conf(publish),
 	Port = clamorous:get_conf(port),
 	Disp = [{'_', routes(App, Publ)}],
-	Spec = cowboy:child_spec(?MODULE, ?ACCEPTORS_COUT,
+	cowboy:start_listener(?MODULE, ?ACCEPTORS_COUT,
 		cowboy_tcp_transport, [{port, Port}],
 		cowboy_http_protocol, [{dispatch, Disp}, {timeout, infinity}]
 	),
-    clamorous_sup:start_link([Spec]).
+    clamorous_sup:start_link().
 
 stop(_State) ->
+	cowboy:stop_listener(?MODULE),
     ok.
 
 get_seq(Req1) ->

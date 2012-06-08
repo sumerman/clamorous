@@ -28,39 +28,24 @@ to_json(Req, PName) ->
 	{QS,  Req1} = cowboy_http_req:qs_vals(Req),
 	{Seq, Req2} = clamorous_app:get_seq(Req1),
 	MF = cl_data:parse_qs_to_mf(QS), 
-	subscribe(LPoll, MF),
-	Items = hist(Seq, MF),
-	New = case {LPoll, Items} of
-		{true, []} -> recv(true);
-		_Else -> recv(false)
-	end,
-	% skip potential duplicates
-	Res  = lists:usort(fun(O1,O2) ->
-				ID1 = cl_data:id(O1), 
-				ID2 = cl_data:id(O2),
-				ID1 =< ID2
-			end, New ++ Items),
-	Resp = cl_data:encode(Res),
+	clamorous:subscribe(Seq, MF),
+	Items = recv(LPoll),
+	Resp  = cl_data:encode(Items),
 	{Resp, Req2, PName}.
 
-subscribe(false, _) -> false;
-subscribe(true, MF) ->
-	cl_data:subscribe(cl_data:gen_filter(MF)).
-
-hist(new, _) -> [];
-hist(Seq, MF) when is_integer(Seq) ->
-	{ok, Items} = cl_logger:select(Seq, MF),
-	Items.
-
-recv(false) -> 
+recv(LPoll) ->
+	After = if
+		LPoll -> infinity;
+		true  -> 1
+	end,
 	receive 
-		?CLDATA(M) -> 
+		{_Mod, history, over} ->
+			recv(LPoll);
+		{_Mod, new, M} ->
+			[M|recv(false)];
+		{_Mod, history, M} ->
 			[M|recv(false)]
-	after 0 -> []
-	end;
-recv(true) ->
-	receive 
-		?CLDATA(M) -> 
-			[M|recv(false)]
+	after
+		After -> []
 	end.
 

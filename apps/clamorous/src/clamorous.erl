@@ -6,7 +6,7 @@
 -module(clamorous).
 
 -export([start/0, start/1, stop/0, get_conf/1]).
--export([send/2, send_plist/1, send_json/1]).
+-export([send/2, send_plist/1, send_json/1, subscribe/2]).
 
 %% Public API
 
@@ -30,6 +30,12 @@ send_plist(PL) ->
 -spec send_json(binary()|iolist()) -> true.
 send_json(JSON) ->
 	cl_data:send(cl_data:new_from_json(JSON)).
+
+-spec subscribe(cl_data:idt(), cl_data:match_fields()) -> 
+	{ok, pid()} | {error, term()}.
+subscribe(LastID, MFs) ->
+	cl_subscription_sup:start_subscription(self(), 
+		[{last_id, LastID}, {match_fields, MFs}]).
 
 %% Helper functions and Private API
 

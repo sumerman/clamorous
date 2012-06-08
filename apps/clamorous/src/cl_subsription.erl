@@ -67,6 +67,7 @@ handle_info(history, #state{ last_id=LID, match_fields=MFs} = State) when is_int
 				send(history, State, Msg),
 				max(ID, cl_data:id(Msg))
 		end, 0, Logs),
+	send(history, State, over),
 	if
 		State#state.only_history -> 
 			{stop, normal, State};
@@ -87,8 +88,10 @@ handle_info(?CLDATA(M), #state{ last_id=LID } = State) ->
 	ID = cl_data:id(M),
 	% skip potential duplicates from history
 	if
-		ID =< LID -> nothing;
-		true -> send(new, State, M)
+		(ID =< LID) and is_integer(LID) -> 
+			nothing;
+		true -> 
+			send(new, State, M)
 	end,
 	{noreply, State};
 
@@ -109,5 +112,5 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 
 send(Source, #state{ client=C }, Msg) ->
-	C ! {?MODULE, Source, Msg}.
+	C ! {application:get_application(), Source, Msg}.
 

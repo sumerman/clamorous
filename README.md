@@ -138,10 +138,16 @@ history and than all newly published objects.
 Clamorous is not designed for coping with this constantly!**
 
 With the help of sequenced IDs you can continue a subscription after 
-reconnect from the message next to the last received one. As if nothing 
-happened. (Actually only if the time passed from disconnection is less 
-than max storage time of the history item. Otherwise some messages 
-may be dropped).
+reconnect from the message next to the last received one.
+
+##### Caveats
+
+* Message will be preserved only for time equal to max storage time 
+of the history item. Older messages may be dropped.
+* Messages from different publishers may appear out of order under 
+some circumanstances. If it is critical for your application, it 
+should handle that on the client side by, for example, selecting 
+SEQ on the time basis instead of just using the last received one.
 
 Let's look closer to the types of subscriptions.
 

@@ -8,15 +8,12 @@
 -behaviour(cowboy_http_handler).
 -export([init/3, handle/2, terminate/2, handle_loop/2]).
 
--include("../include/clamorous.hrl").
--record(state, {seq=0,mfs=[]}).
-
 init({_Any, http}, Req, []) ->
 	{QS, Req1}  = cowboy_http_req:qs_vals(Req),
 	{Seq, Req2} = clamorous_app:get_seq(Req1),
 	MF = cl_data:parse_qs_to_mf(QS),
-	cl_data:subscribe(cl_data:gen_filter(MF)),
-	{ok, Req2, #state{seq=Seq, mfs=MF}}.
+	clamorous:subscribe(Seq, MF),
+	{ok, Req2, []}.
 
 handle(Req, State) ->
 	Headers = [
@@ -26,29 +23,18 @@ handle(Req, State) ->
 	{ok, Req2} = cowboy_http_req:chunked_reply(200, Headers, Req),
 	{ok, T, S} = cowboy_http_req:transport(Req2),
 	ok = T:setopts(S, [{active, true}]),
-	handle_loop(Req2, handle_hist(Req2, State)).
+	handle_loop(Req2, State).
 
-handle_hist(_Req, #state{seq=new} = State) -> 
-	State#state{ seq=0 }; % receive should not skip anything
-handle_hist(Req, #state{seq=N, mfs=MF} = State) when is_integer(N) ->
-	{ok, Items} = cl_logger:select(N, MF),
-	N1 = lists:foldl(fun(I, M) ->
-				M1 = send_resp(Req, I),
-				max(M, M1)
-		end, 0, Items),
-	State#state{ seq=N1 }.
-
-handle_loop(Req, #state{ seq=N } = State) ->
+handle_loop(Req, State) ->
 	receive
 		{tcp,_Socket,_Data} ->
 			{ok, Req, State};
 		{tcp_closed,_Socket} ->
 			{ok, Req, State};
-		?CLDATA(M) ->
-			ID = cl_data:id(M),
-			% skip potential duplicates
-			((ID > N) or (N == new)) 
-				andalso send_resp(Req, M),
+		{_Mod, history, over} ->
+			?MODULE:handle_loop(Req, State);
+		{_Mod, _Src, M} ->
+			send_resp(Req, M),
 			?MODULE:handle_loop(Req, State)
 	end.
 

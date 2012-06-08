@@ -8,7 +8,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_link/1]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -22,21 +22,18 @@
 %% ===================================================================
 
 start_link() ->
-	start_link([]).
-
-start_link(Spec) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, Spec).
+	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
-init(ESpec) ->
+init(_) ->
 	Spec = [
 		?CHILDS(cl_subscription_sup, []),
 		?CHILDW(cl_dicover, []),
 		?CHILDW(cl_ets_heir, []),
 		?CHILDW(cl_ets_logger, [])
 	],
-    {ok, { {one_for_one, 5, 10}, (Spec ++ ESpec)} }.
+    {ok, { {one_for_one, 5, 10}, Spec} }.
 
