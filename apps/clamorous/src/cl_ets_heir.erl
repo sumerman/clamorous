@@ -41,7 +41,7 @@ get_table(Name) ->
 	Res = receive
 			{'ETS-TRANSFER', Tab, _HeirPid, _Name} ->
 				{ok, Tab};
-			{'DOWN', MRef, _, Reason} ->
+			{'DOWN', MRef, process, _Pid, Reason} ->
 				{error, Reason};
 			{error, Reason} ->
 				{error, Reason}
