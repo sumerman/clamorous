@@ -33,7 +33,6 @@ start_link(Spec) ->
 
 init(ESpec) ->
 	Spec = [
-		?CHILDS(cl_subscription_sup, []),
 		?CHILDW(cl_dicover, []),
 		?CHILDW(cl_ets_heir, []),
 		?CHILDW(cl_ets_logger, [])
