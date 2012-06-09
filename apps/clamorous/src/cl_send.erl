@@ -49,10 +49,10 @@ malformed_request(Req, State) ->
 	end.
 
 process_post(Req, {many, L}) when is_list(L) ->
-	[cl_data:send(M) || M <- L], 
+	[cl_metapub:send(M) || M <- L], 
 	ok(Req);
 process_post(Req, {one, M}) ->
-	cl_data:send(M),
+	cl_metapub:send(M),
 	ok(Req).
 
 ok(Req) -> {true, resp(Req, ok), ok}.

@@ -21,15 +21,15 @@ stop() ->
 
 -spec send(cl_data:match_fields(), any()) -> true.
 send(MatchFields, Data) when is_list(MatchFields) ->
-	cl_data:send(cl_data:new(MatchFields, Data)).
+	cl_metapub:send(cl_data:new(MatchFields, Data)).
 
 -spec send_plist(proplists:proplist()) -> true.
 send_plist(PL) ->
-	cl_data:send(cl_data:new_from_plist(PL)).
+	cl_metapub:send(cl_data:new_from_plist(PL)).
 
 -spec send_json(binary()|iolist()) -> true.
 send_json(JSON) ->
-	cl_data:send(cl_data:new_from_json(JSON)).
+	cl_metapub:send(cl_data:new_from_json(JSON)).
 
 -spec subscribe(cl_data:idt(), cl_data:match_fields()) -> 
 	{ok, pid()} | {error, term()}.

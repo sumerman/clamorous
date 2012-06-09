@@ -30,6 +30,7 @@ start_link() ->
 
 init(_) ->
 	Spec = [
+		?CHILDW(cl_metapub, []),
 		?CHILDS(cl_subscription_sup, []),
 		?CHILDW(cl_dicover, []),
 		?CHILDW(cl_ets_heir, []),

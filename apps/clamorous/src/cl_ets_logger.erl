@@ -45,6 +45,7 @@ force_cleanup() ->
 %% ------------------------------------------------------------------
 
 init(_Args) ->
+	erlang:process_flag(priority, high),
 	cl_logger:reg_as_logger(),
 	%T = ets:new(?MODULE, [
 			%duplicate_bag,
