@@ -1,3 +1,4 @@
 apps/clamorous/ebin
+ebin
 rel/clamorous
 *.draft.*
