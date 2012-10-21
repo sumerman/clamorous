@@ -19,7 +19,7 @@ clean:
 
 rel: compile
 	-rm -r rel/clamorous
-	$(REBAR) generate
+	$(REBAR) -C rebar.rel.config generate
 
 cleandeps:
 	$(REBAR) delete-deps
