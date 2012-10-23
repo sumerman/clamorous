@@ -8,7 +8,7 @@
 	5) Search result pagination (select(LastID, MaxItems))
 3) Decouple components and refine ifaces: 
 	Subscribtion vs HTTP vs Serialization (json for now)
-	1) Erlang subscription API: 
+	+1) Erlang subscription API: 
 	Should hide log-search, harbinger
 	and message-order issues behind
 	simple stream of messages.
@@ -16,7 +16,7 @@
 	3) Pluggable serlialization (JSON/Protobuf/...)
 4) Binary disk-logger for long term message history
 5) Tests and docs
-6) Fix potential message loss under extreme load
+-?6) Fix potential message loss under extreme load
 7) SSL?
 8) Plugins (mod + opts, prebacked shell mod)
 ?9) Fields rewriting plugin

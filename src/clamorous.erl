@@ -35,7 +35,7 @@ send_json(JSON) ->
   {ok, pid()} | {error, term()}.
 subscribe(LastID, MFs) ->
   cl_subscription_sup:start_subscription(self(), 
-                                         [{last_id, LastID}, {match_fields, MFs}]).
+           [{last_id, LastID}, {match_fields, MFs}]).
 
 %% Helper functions and Private API
 

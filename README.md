@@ -141,7 +141,7 @@ With the help of sequenced IDs you can continue a subscription after
 reconnect from the message next to the last received one. As if nothing 
 happened. (Actually only if the time passed from disconnection is less 
 than max storage time of the history item. Otherwise some messages 
-may be dropped).
+may be dropped. See configuration section for details.).
 
 Let's look closer to the types of subscriptions.
 
@@ -204,12 +204,42 @@ Get request with `SEQ`=`new` is useless since it will always return `[]`.
 Erlang interface
 ----------------
 
-For now there is *public* Erlang API only for publishing.  
-I hope I'll be able to describe its counterpart in the near future :)
+### Publish ###
 
-### Publish
+```
+-spec send_plist(proplists:proplist()) -> true.
 
-TODO
+-spec send_json(binary()|iolist()) -> true.
+```
+
+### Subscribe ###
+
+```
+-spec subscribe(LastID::cl_data:idt(), cl_data:match_fields()) -> 
+  {ok, pid()} | {error, term()}.
+```
+
+and then in your client code (where `Message :: cl_data()`)
+
+```
+subscr() ->
+  clamorous:subscribe(Seq, MF),
+  recv().
+
+recv() ->
+  receive 
+    {_Mod, history, over} ->
+      recv();
+    {_Mod, new, Message} ->
+      %% process ...
+      recv();
+    {_Mod, history, Message} ->
+      %% process ...
+      recv()
+  end.
+
+```
+
 
 Configuration
 -------------
@@ -221,9 +251,12 @@ Here is the text of the node's config file with the default values.
 		{clamorous, [
 			{port,8080},		    % a HTTP port to listen
 			{match_fields,[]},
+			{publish, true},        % disable HTTP publishing interface
 			{discovery,false},      % autodiscovery switch
 			{discovery_port,19090}, % autodiscovery port
-			{history_storage_time,{0,10,0}}
+			{history_min_items, 10}, 
+			{history_storage_time,{0,10,0}},
+			{local_total_order_pub, false} 
 		]},
 		{sasl, [
 			{sasl_error_logger, {file, "log/sasl-error.log"}},
@@ -256,10 +289,13 @@ To customize the amount of time for which every message would be
 available in history you may alter the value of the 
 `{history_storage_time,{H,M,S}}` entry, where `H`, `M` and `S` 
 is *Hours*, *Minutes* and *Seconds* respectively.
+There is also another setting named `history_min_items` which
+overrides `history_storage_time`, thus given number of items will be
+preserved even if they are older than prescribed by storage time.
 
 ### Match fields and big-documents
 
-For the case when messages are expected to have many fields only
+For the cases when messages are expected to have many fields only
 few of which would be used in subscriptions there may be match
 fields specification provided by setting the `match_fields` to
 the list of field's names, e.g.: `{match_fields,[idx, <<"foo">>, "bar"]}`. 

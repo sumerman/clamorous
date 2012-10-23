@@ -29,10 +29,10 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 send(M) ->
-  case application:get_env(local_total_order_pub) of
-    {ok, true} -> 
+  case clamorous:get_conf(local_total_order_pub) of
+    true  -> 
       gen_server:cast(?SERVER, {send, M});
-    undefined  ->
+    false ->
       cl_data:send(M)
   end.
 

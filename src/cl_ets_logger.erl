@@ -150,14 +150,23 @@ point_in_past() ->
 
 -spec max_id_among_old_ones(#idx{}, {cl_data:idt(), cl_data:idt()}) -> 
   {cl_data:idt(), cl_data:idt()}.
-max_id_among_old_ones(#idx{t=time,k=Tm,v=ID}, {Old, MI}) when (Tm=<Old) ->
-  {Old, max(ID, MI)};
+max_id_among_old_ones(#idx{t=time,k=Tm,v=ID}, {Old, Q}) when (Tm =< Old) ->
+  Q1 = case ID > cl_bqueue:latest(Q) of
+         true  -> cl_bqueue:push(ID, Q);
+         false -> Q
+       end,
+  {Old, Q1};
 max_id_among_old_ones(_, A) -> A.
 
 cleanup(#state{ backend=B, tab=T, min_id=PMin } = St) ->
   Old = point_in_past(),
+  Q   = cl_bqueue:new(clamorous:get_conf(history_min_items)),
   % max id among old items becomes min id after deletion
-  {_O, Min} = B:foldl(fun max_id_among_old_ones/2, {Old, PMin}, T),
+  % but if 'history_min_items' is set to some K, than
+  % min (thus oldest) of top-K maximum IDs must be used instead.
+  {_O, KOfLatest} = B:foldl(fun max_id_among_old_ones/2, 
+                            {Old, cl_bqueue:push(PMin, Q)}, T),
+  Min = cl_bqueue:oldest(KOfLatest),
   Exp = [
       % meta
       {#idx{v='$1', _='_'},
