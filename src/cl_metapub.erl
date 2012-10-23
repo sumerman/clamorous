@@ -19,45 +19,45 @@
 %% ------------------------------------------------------------------
 
 -export([init/1, handle_call/3, handle_cast/2, 
-	handle_info/2, terminate/2, code_change/3]).
+         handle_info/2, terminate/2, code_change/3]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
 start_link() ->
-	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 send(M) ->
-	gen_server:cast(?SERVER, {send, M}).
+  gen_server:cast(?SERVER, {send, M}).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
 %% ------------------------------------------------------------------
 
 init(Args) ->
-	erlang:process_flag(priority, high),
-	{ok, Args}.
+  erlang:process_flag(priority, high),
+  {ok, Args}.
 
 handle_call(_Request, _From, State) ->
-	{stop, badmsg, State}.
+  {stop, badmsg, State}.
 
 handle_cast({send, M}, State) ->
-	cl_data:set_id(M, cl_idgen:get_id()),
-	cl_data:send(M),
-	{noreply, State};
+  cl_data:set_id(M, cl_idgen:get_id()),
+  cl_data:send(M),
+  {noreply, State};
 
 handle_cast(_Msg, State) ->
-	{stop, badmsg, State}.
+  {stop, badmsg, State}.
 
 handle_info(_Info, State) ->
-	{stop, badmsg, State}.
+  {stop, badmsg, State}.
 
 terminate(_Reason, _State) ->
-	ok.
+  ok.
 
 code_change(_OldVsn, State, _Extra) ->
-	{ok, State}.
+  {ok, State}.
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions

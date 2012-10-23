@@ -21,20 +21,20 @@
 %% ===================================================================
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 start_subscription(Opts) ->
-	start_subscription(self(), Opts).
+  start_subscription(self(), Opts).
 
 start_subscription(Client, Opts) ->
-	supervisor:start_child(?MODULE, [Client, Opts]).
+  supervisor:start_child(?MODULE, [Client, Opts]).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init([]) ->
-    {ok, { {simple_one_for_one, 5, 10}, [
-				?CHILDW(cl_subsription, [])
-				]} }.
+  {ok, { {simple_one_for_one, 5, 10}, [
+        ?CHILDW(cl_subsription, [])
+        ]} }.
 

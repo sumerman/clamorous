@@ -20,11 +20,11 @@
 -type match_fields() :: [match_field()].
 
 -record(data, {
-		id           = 0         :: idt(),
-		timestamp    = 0         :: timestamp(), 
-		match_fields = []        :: match_fields(), 
-		content      = undefined :: any()
-		}).
+    id           = 0         :: idt(),
+    timestamp    = 0         :: timestamp(), 
+    match_fields = []        :: match_fields(), 
+    content      = undefined :: any()
+    }).
 
 -opaque cl_data() :: #data{}.
 
@@ -32,13 +32,13 @@
 
 -spec new(match_fields(), any()) -> cl_data().
 new(MF, C) ->
-	MF1 = norm_plist(MF), 
-	#data{ 
-		id           = cl_idgen:get_id(),
-		timestamp    = gen_timestamp(),
-		match_fields = MF1,
-		content      = C
-		}.
+  MF1 = norm_plist(MF), 
+  #data{ 
+    id           = cl_idgen:get_id(),
+    timestamp    = gen_timestamp(),
+    match_fields = MF1,
+    content      = C
+    }.
 
 -spec id(cl_data()) -> idt().
 id(#data{ id=ID }) -> ID.
@@ -61,90 +61,90 @@ keypos() -> #data.id.
 
 -spec norm_plist(proplists:proplist()) -> proplists:proplist().
 norm_plist(PL) ->
-	proplists:unfold(proplists:compact(PL)).
+  proplists:unfold(proplists:compact(PL)).
 
 -spec extract_match_fields(proplists:proplist()) -> match_fields().
 extract_match_fields(PL) ->
-	case clamorous:get_conf(match_fields) of
-		undefined -> PL;
-		[] -> PL;
-		MFL when is_list(MFL) ->
-			MFL1 = lists:map(fun norm_mf_cfg_item/1, MFL),
-			[E || {F,_V}=E <- PL, lists:member(F, MFL1)]
-	end.
+  case clamorous:get_conf(match_fields) of
+    undefined -> PL;
+    [] -> PL;
+    MFL when is_list(MFL) ->
+      MFL1 = lists:map(fun norm_mf_cfg_item/1, MFL),
+      [E || {F,_V}=E <- PL, lists:member(F, MFL1)]
+  end.
 
 norm_mf_cfg_item(MFC) when is_atom(MFC) -> 
-	atom_to_binary(MFC, utf8);
+  atom_to_binary(MFC, utf8);
 norm_mf_cfg_item(MFC) when is_list(MFC) -> 
-	iolist_to_binary(MFC);
+  iolist_to_binary(MFC);
 norm_mf_cfg_item(MFC) when is_binary(MFC) -> 
-	MFC.
+  MFC.
 
 -spec new_from_plist(proplists:proplist()) -> cl_data().
 new_from_plist(PL) ->
-	PL1 = norm_plist(PL),
-	MFV = extract_match_fields(PL1),
-	DIO = mochijson2:encode(PL1),
-	DBN = iolist_to_binary(DIO),
-	new(MFV, {json, DBN}).
+  PL1 = norm_plist(PL),
+  MFV = extract_match_fields(PL1),
+  DIO = mochijson2:encode(PL1),
+  DBN = iolist_to_binary(DIO),
+  new(MFV, {json, DBN}).
 
 -spec new_from_json(binary()|iolist()) -> cl_data().
 new_from_json(D) ->
-	{struct, _} = mochijson2:decode(D),
-	PL  = mochijson2:decode(D, [{format, proplist}]),
-	MFV = extract_match_fields(PL),
-	new(MFV, {json, D}).
+  {struct, _} = mochijson2:decode(D),
+  PL  = mochijson2:decode(D, [{format, proplist}]),
+  MFV = extract_match_fields(PL),
+  new(MFV, {json, D}).
 
 -spec encode([cl_data()] | cl_data()) -> iolist().
 encode(L) when is_list(L) ->
-	mochijson2:encode([
-			{json, encode(M)}
-			|| M <- L]);
+  mochijson2:encode([
+      {json, encode(M)}
+      || M <- L]);
 
 encode(#data{} = M) ->
-	ID   = cl_data:id(M), 
-	Cont = cl_data:content(M),
-	[mochijson2:encode([
-				{id,ID}, 
-				{data,Cont}]), $\n].
+  ID   = cl_data:id(M), 
+  Cont = cl_data:content(M),
+  [mochijson2:encode([
+        {id,ID}, 
+        {data,Cont}]), $\n].
 
 -spec gen_timestamp() -> timestamp().
 gen_timestamp() ->
-	calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
+  calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 -spec gen_filter(match_fields()) -> fun((_,any()) -> boolean()).
 gen_filter(MFF) ->
-	fun
-		(_C, #data{} = M) ->
-			MFs = cl_data:match_fields(M),
-			lists:all(fun({K,V}) ->
-						V1 = proplists:get_value(K,MFs),
-						V =:= V1
-				end, MFF);
-		(_, _) -> false
-	end.
+  fun
+    (_C, #data{} = M) ->
+      MFs = cl_data:match_fields(M),
+      lists:all(fun({K,V}) ->
+            V1 = proplists:get_value(K,MFs),
+            V =:= V1
+        end, MFF);
+    (_, _) -> false
+  end.
 
 -spec parse_qs_to_mf([{binary()|iolist(), binary()|iolist()}]) 
-	-> match_fields().
+  -> match_fields().
 parse_qs_to_mf(PL) ->
-	[{K,parse_val(V)} || {K,V} <- PL].
+  [{K,parse_val(V)} || {K,V} <- PL].
 
 -spec parse_val(binary()|iolist()) -> term().
 parse_val(V) ->
-	try mochijson2:decode(V, [{format, proplist}])
-	catch _:_ -> V end.
+  try mochijson2:decode(V, [{format, proplist}])
+  catch _:_ -> V end.
 
 
 topic() -> 
-	?MODULE.
+  ?MODULE.
 subscribe() ->
-	harbinger:subscribe(topic()).
+  harbinger:subscribe(topic()).
 subscribe(F) ->
-	harbinger:subscribe(topic(), F).
+  harbinger:subscribe(topic(), F).
 
 -spec send(cl_data()) -> true.
 send(#data{} = D) ->
-	harbinger:send(topic(), D);
+  harbinger:send(topic(), D);
 send(_) ->
-	erlang:error(badarg).
+  erlang:error(badarg).
 
