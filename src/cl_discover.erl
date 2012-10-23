@@ -3,7 +3,7 @@
 %%% @copyright 2012 T-Platforms
 %%%-------------------------------------------------------------------
 
--module(cl_dicover).
+-module(cl_discover).
 -behaviour(gen_server).
 -define(SERVER, ?MODULE).
 -define(TIMEOUT, 1000).

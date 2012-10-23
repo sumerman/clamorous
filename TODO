@@ -19,3 +19,5 @@
 6) Fix potential message loss under extreme load
 7) SSL?
 8) Plugins (mod + opts, prebacked shell mod)
+?9) Fields rewriting plugin
+?10) Internal statistics

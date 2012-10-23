@@ -32,7 +32,7 @@ init(_) ->
 	Spec = [
 		?CHILDW(cl_metapub, []),
 		?CHILDS(cl_subscription_sup, []),
-		?CHILDW(cl_dicover, []),
+		?CHILDW(cl_discover, []),
 		?CHILDW(cl_ets_heir, []),
 		?CHILDW(cl_ets_logger, [])
 	],
