@@ -29,7 +29,12 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 send(M) ->
-  gen_server:cast(?SERVER, {send, M}).
+  case application:get_env(local_total_order_pub) of
+    {ok, true} -> 
+      gen_server:cast(?SERVER, {send, M});
+    undefined  ->
+      cl_data:send(M)
+  end.
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions

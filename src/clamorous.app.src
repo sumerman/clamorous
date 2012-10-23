@@ -13,10 +13,12 @@
 	{env, [ 
 		{port, 8080}, 
 		{publish, true}, 
+		{local_total_order_pub, false}, 
 		{discovery_port, 19090}, 
 		{discovery, false}, 
 		{cleanup_interval, 1}, 
 		{history_storage_time, {0,10,0}}, 
+		{history_min_items, 10}, 
 		{match_fields, []} 
 	]}
 ]}.
