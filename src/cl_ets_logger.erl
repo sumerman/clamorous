@@ -148,8 +148,8 @@ point_in_past() ->
   Now = cl_data:gen_timestamp(),
   Now - Sec.
 
--spec max_id_among_old_ones(#idx{}, {cl_data:idt(), cl_data:idt()}) -> 
-  {cl_data:idt(), cl_data:idt()}.
+-spec max_id_among_old_ones(#idx{}, {cl_data:idt(), cl_bqueue:cl_bqueue()}) -> 
+  {cl_data:idt(), cl_bqueue:cl_bqueue()}.
 max_id_among_old_ones(#idx{t=time,k=Tm,v=ID}, {Old, Q}) when (Tm =< Old) ->
   Q1 = case ID > cl_bqueue:latest(Q) of
          true  -> cl_bqueue:push(ID, Q);
