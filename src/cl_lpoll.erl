@@ -44,7 +44,7 @@ recv(LPoll) ->
     {_Mod, new, M} ->
       [M|recv(false)];
     {_Mod, history, M} ->
-      [M|recv(false)]
+      [M|recv(LPoll)]
   after
     After -> []
   end.

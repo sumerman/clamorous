@@ -27,8 +27,8 @@
 -export([init/1, handle_call/3, handle_cast/2, 
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, { tab, backend=ets, min_id }).
--record(idx, {t,k,v}).
+-record(state, { tab, backend=ets, min_id, msg_cnt=0 }).
+-record(idx, {t,k,v,ts,c}).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
@@ -53,6 +53,7 @@ init(_Args) ->
   %{keypos, #idx.k},
   %{read_concurrency, true}]),
   {ok,T} = cl_ets_heir:new(?MODULE, [
+        protected,
         duplicate_bag,
         {keypos, #idx.k},
         {read_concurrency, true}]),
@@ -66,9 +67,9 @@ handle_call(min_stored, _From, State) ->
 %% TODO there should be some concurrency restriction mechanism
 %% to prevent 100+ simultaneous access attempts
 %% probably pool of workers
-%handle_call({select, true, LID, MFs}, _From, State) ->
-%R = {ok, fun() -> do_select(State, LID, MFs) end},
-%{reply, R, State};
+handle_call({select, true, LID, MFs}, _From, State) ->
+  R = {ok, fun() -> do_select(State, LID, MFs) end},
+  {reply, R, State};
 
 handle_call({select, _Local, LID, MFs}, _From, State) ->
   R = {ok, do_select(State, LID, MFs)},
@@ -100,16 +101,16 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 
 -spec insert_object(#state{}, cl_data:cl_data()) -> #state{}.
-insert_object(#state{ min_id=MID } = State, O) ->
+insert_object(#state{ min_id=MID, msg_cnt=C } = State, O) ->
   ID   = cl_data:id(O),
   MF   = cl_data:match_fields(O),
-  Cont =  #idx{t=cont, k=ID, v=O}, 
-  Time =  #idx{t=time, k=cl_data:timestamp(O), v=ID}, 
-  Prop = [#idx{t=prop, k=KV, v=ID} || KV <- MF],
-  LRes = [Cont|[Time|Prop]],
+  TS   = cl_data:timestamp(O),
+  Cont =  #idx{t=cont, k=ID, v=O,  ts=TS, c=C}, 
+  Prop = [#idx{t=prop, k=KV, v=ID, ts=TS, c=C} || KV <- MF],
+  LRes = [Cont|Prop],
   insert(State, LRes),
   NID = min(ID, MID),
-  State#state{ min_id=NID }.
+  State#state{ min_id=NID, msg_cnt=(C+1) }.
 
 insert(#state{ backend=B, tab=T }, L) ->
   B:insert(T, L).
@@ -141,42 +142,24 @@ set_timer() ->
   M = clamorous:get_conf(cleanup_interval),
   erlang:send_after(timer:minutes(M), self(), cleanup_time).
 
--spec point_in_past() -> cl_data:timestamp().
+-spec point_in_past() -> erlang:timestamp().
 point_in_past() ->
   {H, M, S} = clamorous:get_conf(history_storage_time),
   Sec = (timer:hms(H, M, S) div timer:seconds(1)),
   Now = cl_data:gen_timestamp(),
   Now - Sec.
 
--spec max_id_among_old_ones(#idx{}, {cl_data:idt(), cl_bqueue:cl_bqueue()}) -> 
-  {cl_data:idt(), cl_bqueue:cl_bqueue()}.
-max_id_among_old_ones(#idx{t=time,k=Tm,v=ID}, {Old, Q}) when (Tm =< Old) ->
-  Q1 = case ID > cl_bqueue:latest(Q) of
-         true  -> cl_bqueue:push(ID, Q);
-         false -> Q
-       end,
-  {Old, Q1};
-max_id_among_old_ones(_, A) -> A.
-
-cleanup(#state{ backend=B, tab=T, min_id=PMin } = St) ->
+cleanup(#state{ backend=B, tab=T, msg_cnt=Cnt } = St) ->
   Old = point_in_past(),
-  Q   = cl_bqueue:new(clamorous:get_conf(history_min_items)),
-  % max id among old items becomes min id after deletion
-  % but if 'history_min_items' is set to some K, than
-  % min (thus oldest) of top-K maximum IDs must be used instead.
-  {_O, KOfLatest} = B:foldl(fun max_id_among_old_ones/2, 
-                            {Old, cl_bqueue:push(PMin, Q)}, T),
-  Min = cl_bqueue:oldest(KOfLatest),
-  Exp = [
-      % meta
-      {#idx{v='$1', _='_'},
-       [{'<','$1',Min}],[true]},
-      % content
-      {#idx{t=cont, k='$1', _='_'},
-       [{'<','$1',Min}],[true]}
-      ],
+  C   = Cnt - clamorous:get_conf(history_min_items),
+  Exp = [{#idx{c='$1', ts='$2', _='_'},
+           [{'<','$1',C}, {'<','$2',Old}],
+           [true]}],
+  %error_logger:info_msg("SEL:~p; C:~p Old:~p~n", [B:select(T,Exp),C,Old]),
   B:select_delete(T, Exp),
-  St#state{ min_id=Min }.
+  % For now it's ok since used only in logger election heruistic,
+  % but anyway TODO.
+  St#state{ min_id=undefined }. 
 
 %% @doc Select all objects with given match field's values
 %% that have been created later than given LastID 
